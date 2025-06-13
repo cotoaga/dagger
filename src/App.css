@@ -358,3 +358,56 @@ html.dark {
   color: #9ca3af;
   border-left-color: #3b82f6;
 }
+
+/* Selected conversation highlighting */
+.selected-conversation {
+  position: relative;
+  animation: highlightPulse 2s ease-in-out;
+}
+
+.selected-conversation::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(to bottom, #4299e1, #63b3ed);
+  border-radius: 2px;
+  opacity: 0.8;
+}
+
+@keyframes highlightPulse {
+  0% { background-color: transparent; }
+  20% { background-color: rgba(66, 153, 225, 0.1); }
+  100% { background-color: transparent; }
+}
+
+/* Dark mode highlight */
+.app.dark .selected-conversation {
+  border-radius: 8px;
+}
+
+.app.dark .selected-conversation::before {
+  background: linear-gradient(to bottom, #63b3ed, #90cdf4);
+}
+
+/* Light mode highlight */
+.app.light .selected-conversation {
+  border-radius: 8px;
+}
+
+.app.light .selected-conversation::before {
+  background: linear-gradient(to bottom, #3182ce, #4299e1);
+}
+
+/* Graph view adjustments */
+.app-main {
+  position: relative;
+}
+
+/* Ensure graph view takes full space */
+.app-main > .graph-view {
+  margin: 0;
+  height: calc(100vh - 140px);
+}

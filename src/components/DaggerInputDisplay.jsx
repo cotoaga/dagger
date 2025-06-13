@@ -29,7 +29,7 @@ export function DaggerInputDisplay({ interaction }) {
   return (
     <div className="input-interaction">
       <div className="interaction-header">
-        <span className="interaction-number">{interaction.displayNumber}></span>
+        <span className="interaction-number">{interaction.displayNumber}&gt;</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {isLongContent && (
             <button 

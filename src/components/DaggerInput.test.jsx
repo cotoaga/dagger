@@ -19,7 +19,7 @@ describe('DaggerInput', () => {
   test('should display interaction number', () => {
     render(<DaggerInput onSubmit={mockOnSubmit} displayNumber="1.2" />)
     
-    expect(screen.getByText('1.2')).toBeInTheDocument()
+    expect(screen.getByText('1.2>')).toBeInTheDocument()
   })
 
   test('should auto-resize textarea based on content', () => {

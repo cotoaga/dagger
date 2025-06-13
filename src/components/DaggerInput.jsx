@@ -36,7 +36,7 @@ export function DaggerInput({ onSubmit, displayNumber, placeholder = "Ask anythi
   return (
     <div className="dagger-input">
       <div className="input-header">
-        <span className="interaction-number">{displayNumber}></span>
+        <span className="interaction-number">{displayNumber}&gt;</span>
         <div className="stats">
           <span className="char-count">{getCharCount()} chars</span>
           <span className="word-count">{getWordCount()} words</span>

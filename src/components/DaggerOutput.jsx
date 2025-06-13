@@ -83,7 +83,7 @@ export function DaggerOutput({ response, displayNumber, isLoading = false }) {
     return (
       <div className="dagger-output loading">
         <div className="output-header">
-          <span className="interaction-number">>{displayNumber}</span>
+          <span className="interaction-number">&gt;{displayNumber}</span>
           <div className="loading-indicator">
             <span className="loading-text">Thinking...</span>
             <div className="loading-dots">
@@ -101,7 +101,7 @@ export function DaggerOutput({ response, displayNumber, isLoading = false }) {
     return (
       <div className="dagger-output empty">
         <div className="output-header">
-          <span className="interaction-number">>{displayNumber}</span>
+          <span className="interaction-number">&gt;{displayNumber}</span>
         </div>
       </div>
     )
@@ -110,7 +110,7 @@ export function DaggerOutput({ response, displayNumber, isLoading = false }) {
   return (
     <div className="dagger-output">
       <div className="output-header">
-        <span className="interaction-number">>{displayNumber}</span>
+        <span className="interaction-number">&gt;{displayNumber}</span>
         <div className="output-actions">
           {response && response.content.split('\n').length > 3 && (
             <button 

@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { DaggerInput } from './components/DaggerInput.jsx'
 import { DaggerOutput } from './components/DaggerOutput.jsx'
 import { DaggerInputDisplay } from './components/DaggerInputDisplay.jsx'
+import { GraphView } from './components/GraphView.jsx'
+import { ViewToggle } from './components/ViewToggle.jsx'
 import { GraphModel } from './models/GraphModel.js'
 import { ClaudeAPI } from './services/ClaudeAPI.js'
 import './App.css'
@@ -23,6 +25,10 @@ function App() {
   const [selectedModel, setSelectedModel] = useState(() => {
     return localStorage.getItem('dagger-model') || 'claude-3-5-sonnet-20241022'
   })
+  const [currentView, setCurrentView] = useState(() => {
+    return localStorage.getItem('dagger-view') || 'linear'
+  })
+  const [selectedNodeId, setSelectedNodeId] = useState(null)
 
   // Load graph from localStorage on mount
   useEffect(() => {
@@ -101,6 +107,29 @@ function App() {
       claudeAPI.setModel(model)
     }
   }, [claudeAPI])
+
+  const handleViewChange = useCallback((view) => {
+    setCurrentView(view)
+    localStorage.setItem('dagger-view', view)
+  }, [])
+
+  const handleNodeSelect = useCallback((nodeId, nodeData) => {
+    setSelectedNodeId(nodeId)
+    
+    // If switching to linear view from graph, scroll to the selected conversation
+    if (currentView === 'graph') {
+      setCurrentView('linear')
+      localStorage.setItem('dagger-view', 'linear')
+      
+      // Find the conversation in the DOM and scroll to it
+      setTimeout(() => {
+        const element = document.querySelector(`[data-node-id="${nodeId}"]`)
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 100)
+    }
+  }, [currentView])
 
   const handleInputSubmit = useCallback(async (inputData) => {
     if (!claudeAPI) {
@@ -263,6 +292,11 @@ function App() {
           <p>Knowledge Cartography Tool</p>
         </div>
         <div className="header-actions">
+          <ViewToggle 
+            currentView={currentView}
+            onViewChange={handleViewChange}
+          />
+          
           <select 
             value={selectedModel}
             onChange={(e) => handleModelChange(e.target.value)}
@@ -294,65 +328,91 @@ function App() {
       </header>
 
       <main className="app-main">
-        <div className="conversation">
-          {interactions.map((interaction) => {
-            if (interaction.type === 'user_prompt') {
-              return (
-                <DaggerInputDisplay 
-                  key={interaction.internalId}
-                  interaction={{
-                    ...interaction,
-                    displayNumber: interaction.id.replace('>', '')
-                  }}
-                />
-              )
-            } else if (interaction.type === 'ai_response') {
-              return (
+        {currentView === 'linear' ? (
+          <>
+            <div className="conversation">
+              {interactions.map((interaction) => {
+                if (interaction.type === 'user_prompt') {
+                  return (
+                    <div 
+                      key={interaction.internalId}
+                      data-node-id={interaction.internalId}
+                      className={selectedNodeId === interaction.internalId ? 'selected-conversation' : ''}
+                    >
+                      <DaggerInputDisplay 
+                        interaction={{
+                          ...interaction,
+                          displayNumber: interaction.id.replace('>', '')
+                        }}
+                      />
+                    </div>
+                  )
+                } else if (interaction.type === 'ai_response') {
+                  return (
+                    <div 
+                      key={interaction.internalId}
+                      data-node-id={interaction.promptId ? 
+                        interactions.find(i => i.id === interaction.promptId)?.internalId : 
+                        interaction.internalId
+                      }
+                      className={selectedNodeId === (interaction.promptId ? 
+                        interactions.find(i => i.id === interaction.promptId)?.internalId : 
+                        interaction.internalId) ? 'selected-conversation' : ''}
+                    >
+                      <DaggerOutput
+                        response={{
+                          content: interaction.content,
+                          inputTokens: interaction.inputTokens,
+                          outputTokens: interaction.outputTokens,
+                          totalTokens: interaction.totalTokens,
+                          timestamp: interaction.timestamp,
+                          processingTimeMs: interaction.processingTimeMs,
+                          model: interaction.model
+                        }}
+                        displayNumber={interaction.id.replace('>', '')}
+                      />
+                    </div>
+                  )
+                }
+                return null
+              })}
+
+              {isLoading && (
                 <DaggerOutput
-                  key={interaction.internalId}
-                  response={{
-                    content: interaction.content,
-                    inputTokens: interaction.inputTokens,
-                    outputTokens: interaction.outputTokens,
-                    totalTokens: interaction.totalTokens,
-                    timestamp: interaction.timestamp,
-                    processingTimeMs: interaction.processingTimeMs,
-                    model: interaction.model
-                  }}
-                  displayNumber={interaction.id.replace('>', '')}
+                  response={null}
+                  displayNumber={currentInputNumber}
+                  isLoading={true}
                 />
-              )
-            }
-            return null
-          })}
+              )}
+            </div>
 
-          {isLoading && (
-            <DaggerOutput
-              response={null}
-              displayNumber={currentInputNumber}
-              isLoading={true}
-            />
-          )}
-        </div>
+            <div className="input-section">
+              <DaggerInput
+                onSubmit={handleInputSubmit}
+                displayNumber={getNextDisplayNumber()}
+                placeholder="Ask anything, explore ideas, branch into new territories..."
+              />
+            </div>
 
-        <div className="input-section">
-          <DaggerInput
-            onSubmit={handleInputSubmit}
-            displayNumber={getNextDisplayNumber()}
-            placeholder="Ask anything, explore ideas, branch into new territories..."
+            <div className="app-footer">
+              <div className="stats">
+                <span>{interactions.length} interactions</span>
+                <span>{claudeAPI ? '🟢 Connected' : '🔴 Disconnected'}</span>
+              </div>
+              <p className="meta-note">
+                <strong>Meta:</strong> This conversation demonstrates the exact problem DAGGER solves. 
+                Use branching to explore tangents without losing your main thread.
+              </p>
+            </div>
+          </>
+        ) : (
+          <GraphView 
+            conversations={interactions}
+            currentNodeId={selectedNodeId}
+            onNodeSelect={handleNodeSelect}
+            theme={darkMode ? 'dark' : 'light'}
           />
-        </div>
-
-        <div className="app-footer">
-          <div className="stats">
-            <span>{interactions.length} interactions</span>
-            <span>{claudeAPI ? '🟢 Connected' : '🔴 Disconnected'}</span>
-          </div>
-          <p className="meta-note">
-            <strong>Meta:</strong> This conversation demonstrates the exact problem DAGGER solves. 
-            Use branching to explore tangents without losing your main thread.
-          </p>
-        </div>
+        )}
       </main>
     </div>
   )
