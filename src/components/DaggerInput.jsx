@@ -36,7 +36,7 @@ export function DaggerInput({ onSubmit, displayNumber, placeholder = "Ask anythi
   return (
     <div className="dagger-input">
       <div className="input-header">
-        <span className="interaction-number">{displayNumber}</span>
+        <span className="interaction-number">{displayNumber}></span>
         <div className="stats">
           <span className="char-count">{getCharCount()} chars</span>
           <span className="word-count">{getWordCount()} words</span>
@@ -117,6 +117,36 @@ const styles = `
   font-size: 11px;
   color: #9ca3af;
   font-style: italic;
+}
+
+/* Dark mode support for DaggerInput */
+.app.dark .dagger-textarea {
+  background-color: #374151 !important;
+  border-color: #4b5563 !important;
+  color: #e5e7eb !important;
+}
+
+.app.dark .dagger-textarea::placeholder {
+  color: #9ca3af !important;
+}
+
+.app.dark .dagger-textarea:focus {
+  border-color: #3b82f6 !important;
+  background-color: #374151 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+.app.dark .input-header {
+  color: #9ca3af;
+}
+
+.app.dark .interaction-number {
+  background: #4b5563;
+  color: #e5e7eb;
+}
+
+.app.dark .shortcut-hint {
+  color: #6b7280;
 }
 `
 

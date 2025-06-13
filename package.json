@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "api": "node api-server.js",
+    "dev:full": "npm run api & npm run dev",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -12,8 +14,10 @@
     "test:watch": "vitest --watch"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "cytoscape": "^3.32.0",
     "cytoscape-dagre": "^2.5.0",
+    "express": "^5.1.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-markdown": "^10.1.0",

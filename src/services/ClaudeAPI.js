@@ -1,8 +1,31 @@
 export class ClaudeAPI {
-  constructor(apiKey) {
+  constructor(apiKey, model = 'claude-3-5-sonnet-20241022') {
     this.apiKey = apiKey
-    this.baseUrl = 'https://api.anthropic.com/v1/messages'
-    this.model = 'claude-3-sonnet-20240229'
+    // Use local API proxy server to avoid CORS issues in development
+    this.baseUrl = import.meta.env.DEV 
+      ? 'http://localhost:3001/api/claude'
+      : 'https://api.anthropic.com/v1/messages'
+    this.model = model
+  }
+
+  // Available Claude models
+  static MODELS = {
+    'claude-3-5-sonnet-20241022': {
+      name: 'Claude 3.5 Sonnet',
+      description: 'Balanced performance and capability'
+    },
+    'claude-3-5-haiku-20241022': {
+      name: 'Claude 3.5 Haiku', 
+      description: 'Fast and efficient'
+    },
+    'claude-3-opus-20240229': {
+      name: 'Claude 3 Opus',
+      description: 'Most capable, slower'
+    }
+  }
+
+  setModel(model) {
+    this.model = model
   }
 
   async sendMessage(content, options = {}) {
@@ -60,6 +83,17 @@ export class ClaudeAPI {
     // This is just for UI display, not billing
     const words = text.trim().split(/\s+/).length
     return Math.ceil(words * 0.75)
+  }
+
+  // Test API key with a minimal request
+  async testApiKey() {
+    try {
+      const response = await this.sendMessage('Hi', { maxTokens: 10 })
+      return { success: true, message: 'API key working!' }
+    } catch (error) {
+      console.error('API test error:', error)
+      return { success: false, message: `Error: ${error.message}` }
+    }
   }
 
   // Validate API key format

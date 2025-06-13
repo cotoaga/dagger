@@ -1,8 +1,10 @@
 #root {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0;
+  max-width: none;
+  margin: 0 !important;
+  padding: 0 !important;
   text-align: left;
+  width: 100%;
+  min-height: 100vh;
 }
 
 * {
@@ -14,12 +16,21 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: #fafbfc;
   color: #374151;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+html {
+  background: #fafbfc;
+  transition: background-color 0.3s;
 }
 
 .app {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100%;
 }
 
 .app-header {
@@ -110,6 +121,11 @@ body {
   font-size: 12px;
 }
 
+.interaction-header .input-actions {
+  margin-left: auto;
+  margin-right: 12px;
+}
+
 .interaction-number {
   font-weight: 600;
   color: #374151;
@@ -198,4 +214,147 @@ body {
 
 .loading-text {
   animation: thinking 2s infinite;
+}
+
+/* Header actions */
+.header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.theme-toggle {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.theme-toggle:hover {
+  background: #e5e7eb;
+}
+
+.model-selector {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  max-width: 180px;
+}
+
+.model-selector:hover {
+  background: #e5e7eb;
+}
+
+/* Dark mode styles */
+.app.dark {
+  color: #e5e7eb;
+  background: #111827;
+  min-height: 100vh;
+}
+
+html.dark {
+  background: #111827 !important;
+}
+
+.app.dark body {
+  background: #111827 !important;
+  color: #e5e7eb;
+}
+
+.app.dark .app-header {
+  background: #1f2937;
+  border-bottom-color: #374151;
+}
+
+.app.dark .app-header h1 {
+  color: #f9fafb;
+}
+
+.app.dark .app-header p {
+  color: #9ca3af;
+}
+
+.app.dark .theme-toggle {
+  background: #374151;
+  color: #e5e7eb;
+  border-color: #4b5563;
+}
+
+.app.dark .theme-toggle:hover {
+  background: #4b5563;
+}
+
+.app.dark .model-selector {
+  background: #374151;
+  color: #e5e7eb;
+  border-color: #4b5563;
+}
+
+.app.dark .model-selector:hover {
+  background: #4b5563;
+}
+
+.app.dark .api-key-setup {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+.app.dark .api-key-setup h2 {
+  color: #f9fafb;
+}
+
+.app.dark .api-key-setup p {
+  color: #9ca3af;
+}
+
+.app.dark .api-key-setup input {
+  background: #374151 !important;
+  border-color: #4b5563 !important;
+  color: #e5e7eb !important;
+}
+
+.app.dark .api-key-setup input::placeholder {
+  color: #9ca3af !important;
+}
+
+.app.dark .input-interaction {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+.app.dark .interaction-number {
+  background: #374151;
+  color: #e5e7eb;
+}
+
+.app.dark .interaction-content {
+  color: #e5e7eb;
+}
+
+.app.dark .input-section {
+  background: #111827;
+  border-top-color: #374151;
+}
+
+.app.dark .app-footer {
+  border-top-color: #374151;
+}
+
+.app.dark .stats {
+  color: #9ca3af;
+}
+
+.app.dark .meta-note {
+  background: #374151;
+  color: #9ca3af;
+  border-left-color: #3b82f6;
 }

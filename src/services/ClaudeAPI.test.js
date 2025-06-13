@@ -29,7 +29,7 @@ describe('ClaudeAPI', () => {
 
     const result = await api.sendMessage('Test prompt')
 
-    expect(fetch).toHaveBeenCalledWith('https://api.anthropic.com/v1/messages', {
+    expect(fetch).toHaveBeenCalledWith('http://localhost:3001/api/claude', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -37,7 +37,7 @@ describe('ClaudeAPI', () => {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-3-sonnet-20240229',
+        model: 'claude-3-5-sonnet-20241022',
         max_tokens: 4000,
         messages: [{ role: 'user', content: 'Test prompt' }]
       })
