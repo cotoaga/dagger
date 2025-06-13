@@ -58,6 +58,21 @@ html {
   color: #6b7280;
 }
 
+.clear-button {
+  background: #f59e0b;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.clear-button:hover {
+  background: #d97706;
+}
+
 .disconnect-button {
   background: #ef4444;
   color: white;

@@ -35,9 +35,9 @@ export function GraphView({
     const nodes = []
     const edges = []
     
+    
     // Get all user prompts (both main thread and branches)
     const userPrompts = conversations.filter(c => c.type === 'user_prompt')
-    console.log('All user prompts:', userPrompts.map(p => ({ id: p.internalId || p.id, isBranch: p.isBranch })))
     
     userPrompts.forEach(prompt => {
       const response = conversations.find(c => 
@@ -55,16 +55,15 @@ export function GraphView({
 
       const wordCount = calculateWordCount(promptText + ' ' + responseText)
       
-      // Create display label with only node number
-      const nodeNumber = prompt.internalId || prompt.id
-      const cleanNodeNumber = nodeNumber.replace('>', '')
-      const displayLabel = cleanNodeNumber
+      // Create display label using displayNumber if available
+      const displayLabel = prompt.displayNumber ? prompt.displayNumber.toString() : (prompt.internalId || prompt.id).replace('>', '')
       
       // Create conversation node
       nodes.push({
         data: {
           id: prompt.internalId || prompt.id,
           label: displayLabel,
+          displayNumber: prompt.displayNumber || displayLabel, // Store for reference
           prompt: promptText,
           response: responseText,
           wordCount,
@@ -88,13 +87,14 @@ export function GraphView({
       })
     })
 
-    // Create edges for conversation flow
+    // Create a map of available node IDs for quick lookup
+    const nodeIds = new Set(nodes.map(n => n.data.id))
+    
+    // Create edges for conversation flow - only if both nodes exist
     if (graph && graph.edges && graph.edges.length > 0) {
       graph.edges.forEach(edge => {
-        const sourceNode = conversations.find(c => c.internalId === edge.from)
-        const targetNode = conversations.find(c => c.internalId === edge.to)
-        
-        if (sourceNode && targetNode) {
+        // Only create edge if both source and target nodes exist in our node set
+        if (nodeIds.has(edge.from) && nodeIds.has(edge.to)) {
           edges.push({
             data: {
               id: `${edge.from}-${edge.to}`,
@@ -119,7 +119,6 @@ export function GraphView({
           return aNum - bNum
         })
       
-      console.log('Sorted prompts for edges:', sortedPrompts.map(p => p.internalId || p.id))
       
       for (let i = 0; i < sortedPrompts.length - 1; i++) {
         const currentPrompt = sortedPrompts[i]
@@ -202,14 +201,13 @@ export function GraphView({
           'border-color': theme === 'dark' ? '#4a5568' : '#cbd5e0',
           'border-width': 2,
           'color': theme === 'dark' ? '#ffffff' : '#1a202c',
-          'font-size': '12px',
+          'font-size': '16px',
           'font-weight': 'bold',
           'text-valign': 'center',
           'text-halign': 'center',
-          'text-wrap': 'wrap',
-          'text-max-width': '110px',
-          'width': '130px',
-          'height': '90px',
+          'text-wrap': 'none',
+          'width': '60px',
+          'height': '60px',
           'shape': 'round-rectangle',
           'label': 'data(label)',
           'text-outline-width': 1,
@@ -458,16 +456,31 @@ export function GraphView({
         mergeInfo = '<div class="merge-hint">Right-click to merge back</div>'
       }
       
+      // Format timestamp
+      const formatTimestamp = (timestamp) => {
+        if (!timestamp) return 'Unknown'
+        const date = new Date(timestamp)
+        return date.toLocaleString()
+      }
+
       tooltip.innerHTML = `
         <div class="tooltip-content">
-          <div><strong>ID:</strong> ${data.promptId}</div>
-          <div><strong>Prompt:</strong> ${data.prompt.substring(0, 80)}${data.prompt.length > 80 ? '...' : ''}</div>
-          ${branchInfo}
-          <div class="stats-row">
-            <span><strong>Words:</strong> ${data.wordCount}</span>
-            <span><strong>Tokens:</strong> ${data.tokenCount}</span>
+          <div class="tooltip-header">
+            <strong>Conversation ${data.displayNumber}</strong>
+            <span class="timestamp">${formatTimestamp(data.timestamp)}</span>
           </div>
-          <div><strong>Time:</strong> ${data.processingTime}ms</div>
+          ${branchInfo}
+          <div class="prompt-preview">
+            <strong>Prompt:</strong> ${data.prompt.substring(0, 100)}${data.prompt.length > 100 ? '...' : ''}
+          </div>
+          <div class="response-preview">
+            <strong>Response:</strong> ${data.response.substring(0, 150)}${data.response.length > 150 ? '...' : ''}
+          </div>
+          <div class="tooltip-meta">
+            <span>🕒 ${data.processingTime}ms</span>
+            <span>🔢 ${data.tokenCount} tokens</span>
+            <span>📝 ${data.wordCount} words</span>
+          </div>
           ${data.inheritedSummary ? '<div class="inherited-badge">📋 Has context summary</div>' : ''}
           ${mergeInfo}
           <div class="action-hint">Right-click to create branch</div>
@@ -850,12 +863,45 @@ const styles = `
 .tooltip-content {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
-.stats-row {
+.tooltip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-color, #4a5568);
+}
+
+.timestamp {
+  color: var(--text-secondary, #a0aec0);
+  font-size: 10px;
+  font-style: italic;
+}
+
+.prompt-preview, .response-preview {
+  margin: 6px 0;
+  line-height: 1.3;
+}
+
+.prompt-preview {
+  color: var(--text-primary, #e2e8f0);
+}
+
+.response-preview {
+  color: var(--text-secondary, #a0aec0);
+}
+
+.tooltip-meta {
   display: flex;
   gap: 12px;
+  font-size: 10px;
+  color: var(--text-secondary, #a0aec0);
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-color, #4a5568);
 }
 
 .branch-info {

@@ -33,7 +33,8 @@ function App() {
   // Load graph from localStorage on mount
   useEffect(() => {
     graph.load()
-    setInteractions(graph.getAllNodes())
+    // Load conversations in sequence order, not random UUID order
+    setInteractions(graph.getNodesInSequence())
     
     // Try to load API key from localStorage
     const savedApiKey = localStorage.getItem('claude-api-key')
@@ -140,8 +141,8 @@ function App() {
     try {
       // Create input node using conversational method
       const inputNode = graph.addNextPrompt(inputData.content)
-      const updatedInteractions = graph.getAllNodes()
-      setInteractions([...updatedInteractions])
+      // Update conversations in proper sequence
+      setInteractions(graph.getNodesInSequence())
       setCurrentNode(inputNode)
       setCurrentInputNumber(inputNode.id.replace('>', ''))
 
@@ -161,9 +162,8 @@ function App() {
       outputNode.processingTimeMs = processingTime
       outputNode.model = claudeAPI.model
 
-      // Update state
-      const finalInteractions = graph.getAllNodes()
-      setInteractions([...finalInteractions])
+      // Refresh conversations to show updated node
+      setInteractions(graph.getNodesInSequence())
       setCurrentNode(outputNode)
       setCurrentInputNumber(null)
       setIsLoading(false)
@@ -180,8 +180,52 @@ function App() {
   }, [claudeAPI, graph])
 
   const getNextDisplayNumber = useCallback(() => {
-    // Return the next main sequence number that the graph would assign
+    // Return the next main sequence number that would be assigned
     return graph.nextMainSequence.toString()
+  }, [graph])
+
+  // Handle branch creation
+  const handleBranchCreate = useCallback(async (sourceNodeId, branchType, summaryType, inheritedSummary) => {
+    try {
+      const branchNode = graph.addBranchFromPrompt(sourceNodeId, `New ${branchType} branch`, branchType, summaryType, inheritedSummary)
+      // Update conversations in proper sequence
+      setInteractions(graph.getNodesInSequence())
+      graph.save()
+      return branchNode
+    } catch (error) {
+      console.error('Branch creation failed:', error)
+      throw error
+    }
+  }, [graph])
+
+  // Handle merge back
+  const handleMergeBack = useCallback(async (branchNodeId, targetNodeId, summaryType, conversationThread) => {
+    try {
+      const mergeContent = `Merged insights from branch: ${conversationThread.length} exchanges`
+      const mergeNode = graph.mergeBackToTarget(branchNodeId, targetNodeId, mergeContent, summaryType)
+      // Update conversations in proper sequence
+      setInteractions(graph.getNodesInSequence())
+      graph.save()
+      return mergeNode
+    } catch (error) {
+      console.error('Merge back failed:', error)
+      throw error
+    }
+  }, [graph])
+
+  // Handle clear/reset conversation
+  const handleClearConversation = useCallback(() => {
+    const confirmClear = window.confirm(
+      'Are you sure you want to clear all conversations? This action cannot be undone.'
+    )
+    
+    if (confirmClear) {
+      graph.clear()
+      setInteractions([])
+      setCurrentNode(null)
+      setCurrentInputNumber(null)
+      setSelectedNodeId(null)
+    }
   }, [graph])
 
   if (!apiKey) {
@@ -313,6 +357,15 @@ function App() {
           <button onClick={toggleDarkMode} className="theme-toggle">
             {darkMode ? '☀️ Light' : '🌙 Dark'}
           </button>
+          
+          <button 
+            onClick={handleClearConversation}
+            className="clear-button"
+            title="Clear all conversations"
+          >
+            🗑️ Clear
+          </button>
+          
           <button 
             onClick={() => {
               localStorage.removeItem('claude-api-key')
@@ -342,7 +395,7 @@ function App() {
                       <DaggerInputDisplay 
                         interaction={{
                           ...interaction,
-                          displayNumber: interaction.id.replace('>', '')
+                          displayNumber: interaction.displayNumber || interaction.id.replace('>', '')
                         }}
                       />
                     </div>
@@ -369,7 +422,7 @@ function App() {
                           processingTimeMs: interaction.processingTimeMs,
                           model: interaction.model
                         }}
-                        displayNumber={interaction.id.replace('>', '')}
+                        displayNumber={interaction.displayNumber || interaction.id.replace('>', '')}
                       />
                     </div>
                   )
@@ -411,6 +464,10 @@ function App() {
             currentNodeId={selectedNodeId}
             onNodeSelect={handleNodeSelect}
             theme={darkMode ? 'dark' : 'light'}
+            graph={graph}
+            claudeAPI={claudeAPI}
+            onBranchCreate={handleBranchCreate}
+            onMergeBack={handleMergeBack}
           />
         )}
       </main>

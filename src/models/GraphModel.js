@@ -4,6 +4,7 @@ export class GraphModel {
   constructor() {
     this.nodes = new Map() // stores all nodes by their internal UUID
     this.conversationIndex = new Map() // maps conversation IDs (1>, >1, 2.1>, etc.) to internal UUIDs
+    this.conversationSequence = [] // Track display order
     this.edges = []
     this.nextMainSequence = 1
     this.branchCounters = new Map() // tracks branch numbers per prompt
@@ -28,9 +29,14 @@ export class GraphModel {
     const responseId = '>' + promptId.replace('>', '')
     const internalId = uuidv4()
     
+    // Get the prompt's display number for the response
+    const promptNode = this.getNode(promptId)
+    const responseDisplayNumber = promptNode ? promptNode.displayNumber : promptId.replace('>', '')
+    
     const node = {
       id: responseId,
       internalId,
+      displayNumber: responseDisplayNumber, // Use same number as the prompt it responds to
       content,
       timestamp: new Date(),
       type: 'ai_response',
@@ -40,6 +46,7 @@ export class GraphModel {
     
     this.nodes.set(internalId, node)
     this.conversationIndex.set(responseId, internalId)
+    this.conversationSequence.push(internalId) // NEW: Add responses to sequence too
     
     // Add edge from prompt to response
     const promptInternalId = this.conversationIndex.get(promptId)
@@ -74,6 +81,7 @@ export class GraphModel {
     const node = {
       id: branchId,
       internalId,
+      displayNumber: branchId.replace('>', ''), // Use the branch ID as display number (e.g., "1.1")
       content,
       timestamp: new Date(),
       type: 'user_prompt',
@@ -95,6 +103,7 @@ export class GraphModel {
     
     this.nodes.set(internalId, node)
     this.conversationIndex.set(branchId, internalId)
+    this.conversationSequence.push(internalId) // NEW: Add branches to sequence too
     
     // Add edge from parent prompt to branch
     const parentInternalId = this.conversationIndex.get(promptId)
@@ -243,6 +252,7 @@ export class GraphModel {
     const node = {
       id: promptId,
       internalId,
+      displayNumber: sequenceNumber, // Use the sequence number directly
       content,
       timestamp: new Date(),
       type: 'user_prompt',
@@ -261,6 +271,7 @@ export class GraphModel {
     
     this.nodes.set(internalId, node)
     this.conversationIndex.set(promptId, internalId)
+    this.conversationSequence.push(internalId) // NEW: Maintain order
     
     return node
   }
@@ -272,6 +283,17 @@ export class GraphModel {
 
   getAllNodes() {
     return Array.from(this.nodes.values())
+  }
+
+  // NEW: Get nodes in conversation order
+  getNodesInSequence() {
+    return this.conversationSequence.map(id => this.nodes.get(id)).filter(Boolean)
+  }
+  
+  // NEW: Get display number for a node
+  getDisplayNumber(nodeId) {
+    const node = this.nodes.get(nodeId)
+    return node ? node.displayNumber : null
   }
 
   addEdge(fromInternalId, toInternalId, edgeType = 'conversation') {
@@ -290,7 +312,7 @@ export class GraphModel {
       const node = {
         id: responseId,
         internalId,
-        displayNumber: (this.nextMainSequence - 1).toString(),
+        displayNumber: this.nextMainSequence - 1, // Use the sequence number it responds to
         content,
         timestamp: new Date(),
         type: 'output',
@@ -299,8 +321,20 @@ export class GraphModel {
       
       this.nodes.set(internalId, node)
       this.conversationIndex.set(responseId, internalId)
+      this.conversationSequence.push(internalId) // NEW: Add to sequence
       return node
     }
+  }
+
+  // Reset/clear all conversations
+  clear() {
+    this.nodes.clear()
+    this.conversationIndex.clear()
+    this.conversationSequence = []
+    this.edges = []
+    this.nextMainSequence = 1
+    this.branchCounters.clear()
+    this.save() // Save the cleared state
   }
 
   // localStorage persistence methods
@@ -308,6 +342,7 @@ export class GraphModel {
     const data = {
       nodes: Array.from(this.nodes.entries()),
       conversationIndex: Array.from(this.conversationIndex.entries()),
+      conversationSequence: this.conversationSequence,
       edges: this.edges,
       nextMainSequence: this.nextMainSequence,
       branchCounters: Array.from(this.branchCounters.entries())
@@ -328,6 +363,7 @@ export class GraphModel {
       ])
       this.nodes = new Map(nodesWithDates)
       this.conversationIndex = new Map(data.conversationIndex || [])
+      this.conversationSequence = data.conversationSequence || []
       this.edges = data.edges || []
       this.nextMainSequence = data.nextMainSequence || 1
       this.branchCounters = new Map(data.branchCounters || [])
