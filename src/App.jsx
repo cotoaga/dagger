@@ -4,18 +4,16 @@ import { DaggerOutput } from './components/DaggerOutput.jsx'
 import { DaggerInputDisplay } from './components/DaggerInputDisplay.jsx'
 import { GraphView } from './components/GraphView.jsx'
 import { ViewToggle } from './components/ViewToggle.jsx'
-import { GraphModel } from './models/GraphModel.js'
+import { graphModel } from './models/GraphModel.js'
 import { ClaudeAPI } from './services/ClaudeAPI.js'
 import './App.css'
 
 function App() {
-  const [graph] = useState(() => new GraphModel())
-  const [interactions, setInteractions] = useState([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [conversations, setConversations] = useState([])
+  const [currentConversationId, setCurrentConversationId] = useState(null)
+  const [isProcessing, setIsProcessing] = useState(false)
   const [apiKey, setApiKey] = useState('')
   const [claudeAPI, setClaudeAPI] = useState(null)
-  const [currentNode, setCurrentNode] = useState(null)
-  const [currentInputNumber, setCurrentInputNumber] = useState(null)
   const [darkMode, setDarkMode] = useState(() => {
     // Default to dark mode, or load from localStorage
     const saved = localStorage.getItem('dagger-dark-mode')
@@ -30,11 +28,11 @@ function App() {
   })
   const [selectedNodeId, setSelectedNodeId] = useState(null)
 
-  // Load graph from localStorage on mount
+  // Load conversations on mount
   useEffect(() => {
-    graph.load()
-    // Load conversations in sequence order, not random UUID order
-    setInteractions(graph.getNodesInSequence())
+    const loadedConversations = graphModel.getAllConversations();
+    setConversations(loadedConversations);
+    console.log('📊 Storage stats:', graphModel.getStorageStats());
     
     // Try to load API key from localStorage
     const savedApiKey = localStorage.getItem('claude-api-key')
@@ -42,16 +40,8 @@ function App() {
       setApiKey(savedApiKey)
       setClaudeAPI(new ClaudeAPI(savedApiKey))
     }
-  }, [graph])
+  }, [])
 
-  // Auto-save graph every 10 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      graph.save()
-    }, 10000)
-    
-    return () => clearInterval(interval)
-  }, [graph])
 
   const handleApiKeySubmit = useCallback(async (key) => {
     if (!ClaudeAPI.validateApiKey(key)) {
@@ -132,101 +122,86 @@ function App() {
     }
   }, [currentView])
 
-  const handleInputSubmit = useCallback(async (inputData) => {
-    if (!claudeAPI) {
-      alert('Please enter your Claude API key first.')
-      return
+  // CLEAN conversation handler
+  const handleNewConversation = useCallback(async (inputData) => {
+    const prompt = inputData.content;
+    if (!prompt.trim() || isProcessing || !claudeAPI) {
+      if (!claudeAPI) alert('Please enter your Claude API key first.');
+      return;
     }
-
+    
+    setIsProcessing(true);
+    
+    // Create conversation with prompt
+    const newConversation = graphModel.addConversation(prompt, '', {
+      status: 'processing'
+    });
+    
+    // Update UI immediately
+    setConversations(graphModel.getAllConversations());
+    setCurrentConversationId(newConversation.id);
+    
     try {
-      // Create input node using conversational method
-      const inputNode = graph.addNextPrompt(inputData.content)
-      // Update conversations in proper sequence
-      setInteractions(graph.getNodesInSequence())
-      setCurrentNode(inputNode)
-      setCurrentInputNumber(inputNode.id.replace('>', ''))
-
-      // Show loading state
-      setIsLoading(true)
-
       // Call Claude API
-      const startTime = Date.now()
-      const response = await claudeAPI.sendMessage(inputData.content)
-      const processingTime = Date.now() - startTime
-
-      // Create output node using conversational method
-      const outputNode = graph.addResponseToPrompt(inputNode.id, response.content)
-      outputNode.inputTokens = response.inputTokens
-      outputNode.outputTokens = response.outputTokens
-      outputNode.totalTokens = response.totalTokens
-      outputNode.processingTimeMs = processingTime
-      outputNode.model = claudeAPI.model
-
-      // Refresh conversations to show updated node
-      setInteractions(graph.getNodesInSequence())
-      setCurrentNode(outputNode)
-      setCurrentInputNumber(null)
-      setIsLoading(false)
-
-      // Auto-save after interaction
-      graph.save()
-
+      const startTime = Date.now();
+      const response = await claudeAPI.sendMessage(prompt);
+      const processingTime = Date.now() - startTime;
+      
+      // Update with response
+      graphModel.updateConversation(newConversation.id, {
+        response: response.content,
+        processingTime: processingTime,
+        tokenCount: response.totalTokens,
+        model: claudeAPI.model,
+        status: 'complete'
+      });
+      
+      // Refresh UI
+      setConversations(graphModel.getAllConversations());
+      
     } catch (error) {
-      setCurrentInputNumber(null)
-      setIsLoading(false)
-      console.error('Error calling Claude API:', error)
-      alert(`Error: ${error.message}`)
+      console.error('❌ API Error:', error);
+      
+      graphModel.updateConversation(newConversation.id, {
+        response: `Error: ${error.message}`,
+        status: 'error'
+      });
+      
+      setConversations(graphModel.getAllConversations());
+    } finally {
+      setIsProcessing(false);
     }
-  }, [claudeAPI, graph])
+  }, [claudeAPI, isProcessing])
 
   const getNextDisplayNumber = useCallback(() => {
-    // Return the next main sequence number that would be assigned
-    return graph.nextMainSequence.toString()
-  }, [graph])
+    // Return the next conversation number that would be assigned
+    return (graphModel.conversationCounter + 1).toString()
+  }, [])
 
-  // Handle branch creation
-  const handleBranchCreate = useCallback(async (sourceNodeId, branchType, summaryType, inheritedSummary) => {
-    try {
-      const branchNode = graph.addBranchFromPrompt(sourceNodeId, `New ${branchType} branch`, branchType, summaryType, inheritedSummary)
-      // Update conversations in proper sequence
-      setInteractions(graph.getNodesInSequence())
-      graph.save()
-      return branchNode
-    } catch (error) {
-      console.error('Branch creation failed:', error)
-      throw error
-    }
-  }, [graph])
+  // TEST: Add reset button for development
+  const handleReset = useCallback(() => {
+    graphModel.clearAll();
+    setConversations([]);
+    setCurrentConversationId(null);
+    console.log('🔥 All conversations cleared');
+  }, [])
 
-  // Handle merge back
-  const handleMergeBack = useCallback(async (branchNodeId, targetNodeId, summaryType, conversationThread) => {
-    try {
-      const mergeContent = `Merged insights from branch: ${conversationThread.length} exchanges`
-      const mergeNode = graph.mergeBackToTarget(branchNodeId, targetNodeId, mergeContent, summaryType)
-      // Update conversations in proper sequence
-      setInteractions(graph.getNodesInSequence())
-      graph.save()
-      return mergeNode
-    } catch (error) {
-      console.error('Merge back failed:', error)
-      throw error
-    }
-  }, [graph])
-
-  // Handle clear/reset conversation
-  const handleClearConversation = useCallback(() => {
-    const confirmClear = window.confirm(
-      'Are you sure you want to clear all conversations? This action cannot be undone.'
-    )
+  // Handle test export (clean v2.0 export)
+  const handleTestExport = useCallback(() => {
+    const exportData = graphModel.exportToMarkdown();
+    console.log('📤 Export:', exportData.rawData);
     
-    if (confirmClear) {
-      graph.clear()
-      setInteractions([])
-      setCurrentNode(null)
-      setCurrentInputNumber(null)
-      setSelectedNodeId(null)
-    }
-  }, [graph])
+    // Create downloadable file
+    const blob = new Blob([exportData.markdown], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = exportData.filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [])
 
   if (!apiKey) {
     return (
@@ -359,11 +334,37 @@ function App() {
           </button>
           
           <button 
-            onClick={handleClearConversation}
-            className="clear-button"
-            title="Clear all conversations"
+            onClick={handleTestExport} 
+            style={{
+              margin: '0 8px',
+              background: '#10b981',
+              color: 'white',
+              border: 'none',
+              padding: '8px 16px',
+              borderRadius: '6px',
+              fontSize: '12px',
+              cursor: 'pointer'
+            }}
+            title="Export clean v2.0 conversations"
           >
-            🗑️ Clear
+            📤 Export Clean
+          </button>
+          
+          <button 
+            onClick={handleReset} 
+            style={{
+              margin: '0 8px',
+              background: '#ef4444',
+              color: 'white',
+              border: 'none',
+              padding: '8px 16px',
+              borderRadius: '6px',
+              fontSize: '12px',
+              cursor: 'pointer'
+            }}
+            title="Reset all conversations (for testing)"
+          >
+            🔥 Reset All
           </button>
           
           <button 
@@ -384,56 +385,41 @@ function App() {
         {currentView === 'linear' ? (
           <>
             <div className="conversation">
-              {interactions.map((interaction) => {
-                if (interaction.type === 'user_prompt') {
-                  return (
-                    <div 
-                      key={interaction.internalId}
-                      data-node-id={interaction.internalId}
-                      className={selectedNodeId === interaction.internalId ? 'selected-conversation' : ''}
-                    >
-                      <DaggerInputDisplay 
-                        interaction={{
-                          ...interaction,
-                          displayNumber: interaction.displayNumber || interaction.id.replace('>', '')
-                        }}
-                      />
-                    </div>
-                  )
-                } else if (interaction.type === 'ai_response') {
-                  return (
-                    <div 
-                      key={interaction.internalId}
-                      data-node-id={interaction.promptId ? 
-                        interactions.find(i => i.id === interaction.promptId)?.internalId : 
-                        interaction.internalId
-                      }
-                      className={selectedNodeId === (interaction.promptId ? 
-                        interactions.find(i => i.id === interaction.promptId)?.internalId : 
-                        interaction.internalId) ? 'selected-conversation' : ''}
-                    >
-                      <DaggerOutput
-                        response={{
-                          content: interaction.content,
-                          inputTokens: interaction.inputTokens,
-                          outputTokens: interaction.outputTokens,
-                          totalTokens: interaction.totalTokens,
-                          timestamp: interaction.timestamp,
-                          processingTimeMs: interaction.processingTimeMs,
-                          model: interaction.model
-                        }}
-                        displayNumber={interaction.displayNumber || interaction.id.replace('>', '')}
-                      />
-                    </div>
-                  )
-                }
-                return null
-              })}
+              {conversations.map((conversation) => (
+                <div 
+                  key={conversation.id}
+                  data-node-id={conversation.id}
+                  className={selectedNodeId === conversation.id ? 'selected-conversation' : ''}
+                >
+                  <DaggerInputDisplay 
+                    interaction={{
+                      id: conversation.id,
+                      content: conversation.prompt,
+                      timestamp: new Date(conversation.timestamp),
+                      displayNumber: conversation.displayNumber
+                    }}
+                  />
+                  
+                  {conversation.response && (
+                    <DaggerOutput
+                      response={{
+                        content: conversation.response,
+                        totalTokens: conversation.tokenCount,
+                        timestamp: new Date(conversation.timestamp),
+                        processingTimeMs: conversation.processingTime,
+                        model: conversation.model
+                      }}
+                      displayNumber={conversation.displayNumber}
+                      isLoading={conversation.status === 'processing'}
+                    />
+                  )}
+                </div>
+              ))}
 
-              {isLoading && (
+              {isProcessing && (
                 <DaggerOutput
                   response={null}
-                  displayNumber={currentInputNumber}
+                  displayNumber={getNextDisplayNumber()}
                   isLoading={true}
                 />
               )}
@@ -441,7 +427,7 @@ function App() {
 
             <div className="input-section">
               <DaggerInput
-                onSubmit={handleInputSubmit}
+                onSubmit={handleNewConversation}
                 displayNumber={getNextDisplayNumber()}
                 placeholder="Ask anything, explore ideas, branch into new territories..."
               />
@@ -449,7 +435,7 @@ function App() {
 
             <div className="app-footer">
               <div className="stats">
-                <span>{interactions.length} interactions</span>
+                <span>{conversations.length} conversations</span>
                 <span>{claudeAPI ? '🟢 Connected' : '🔴 Disconnected'}</span>
               </div>
               <p className="meta-note">
@@ -459,16 +445,11 @@ function App() {
             </div>
           </>
         ) : (
-          <GraphView 
-            conversations={interactions}
-            currentNodeId={selectedNodeId}
-            onNodeSelect={handleNodeSelect}
-            theme={darkMode ? 'dark' : 'light'}
-            graph={graph}
-            claudeAPI={claudeAPI}
-            onBranchCreate={handleBranchCreate}
-            onMergeBack={handleMergeBack}
-          />
+          <div style={{ padding: '40px', textAlign: 'center' }}>
+            <h2>🗺️ Graph View</h2>
+            <p>Graph visualization will be rebuilt in next phase</p>
+            <p>Current conversations: {conversations.length}</p>
+          </div>
         )}
       </main>
     </div>

@@ -1,3 +1,16 @@
+# DAGGER Redesign - Chunk 3: BURN IT DOWN & BUILD RIGHT 🔥
+
+## KHAOS Mode Activated 😈
+
+**Time to delete Claude Code's mess and build a proper conversation tree.**
+
+## Task: Complete GraphModel Redesign
+
+### 1. **NUKE the existing GraphModel.js**
+
+Replace the ENTIRE contents of `src/models/GraphModel.js` with this clean architecture:
+
+```javascript
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -204,3 +217,123 @@ export class GraphModel {
 
 // Export singleton instance
 export const graphModel = new GraphModel();
+```
+
+### 2. **Update App.jsx to use clean model**
+
+Replace conversation handling in `App.jsx`:
+
+```javascript
+// REPLACE existing GraphModel usage with:
+import { graphModel } from './models/GraphModel.js';
+
+// In App.jsx state:
+const [conversations, setConversations] = useState([]);
+const [currentConversationId, setCurrentConversationId] = useState(null);
+const [isProcessing, setIsProcessing] = useState(false);
+
+// Load conversations on mount
+useEffect(() => {
+  const loadedConversations = graphModel.getAllConversations();
+  setConversations(loadedConversations);
+  console.log('📊 Storage stats:', graphModel.getStorageStats());
+}, []);
+
+// CLEAN conversation handler
+const handleNewConversation = async (prompt) => {
+  if (!prompt.trim() || isProcessing) return;
+  
+  setIsProcessing(true);
+  
+  // Create conversation with prompt
+  const newConversation = graphModel.addConversation(prompt, '', {
+    status: 'processing'
+  });
+  
+  // Update UI immediately
+  setConversations(graphModel.getAllConversations());
+  setCurrentConversationId(newConversation.id);
+  
+  try {
+    // Call Claude API (your existing ClaudeAPI code)
+    const response = await ClaudeAPI.generateResponse(prompt);
+    
+    // Update with response
+    graphModel.updateConversation(newConversation.id, {
+      response: response.content,
+      processingTime: response.processingTime,
+      tokenCount: response.tokenCount,
+      model: response.model,
+      status: 'complete'
+    });
+    
+    // Refresh UI
+    setConversations(graphModel.getAllConversations());
+    
+  } catch (error) {
+    console.error('❌ API Error:', error);
+    
+    graphModel.updateConversation(newConversation.id, {
+      response: `Error: ${error.message}`,
+      status: 'error'
+    });
+    
+    setConversations(graphModel.getAllConversations());
+  } finally {
+    setIsProcessing(false);
+  }
+};
+
+// TEST: Add reset button for development
+const handleReset = () => {
+  graphModel.clearAll();
+  setConversations([]);
+  setCurrentConversationId(null);
+  console.log('🔥 All conversations cleared');
+};
+```
+
+### 3. **Add Test Export Button**
+
+Add to header for testing:
+
+```jsx
+<div className="header-actions">
+  <button onClick={() => {
+    const exportData = graphModel.exportToMarkdown();
+    console.log('📤 Export:', exportData.rawData);
+    
+    // Download file
+    const blob = new Blob([exportData.markdown], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = exportData.filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }}>
+    📤 Export Clean
+  </button>
+  
+  <button onClick={handleReset} style={{color: 'red'}}>
+    🔥 Reset All
+  </button>
+</div>
+```
+
+## Success Criteria
+
+1. **Clean localStorage** - proper storage size, not 2 characters
+2. **One conversation = one node** - prompt + response together
+3. **Sequential display numbers** - 1, 2, 3, 4 in graph
+4. **Working export** - clean markdown with unified conversations
+5. **Ready for branching** - clean foundation for hierarchical IDs
+
+## Test the Rebuild
+
+1. Clear browser localStorage completely
+2. Start fresh conversations
+3. Export should show unified conversation nodes
+4. Storage stats should show real size
+
+**This nukes Claude Code's over-engineered mess and builds a proper foundation for branching.** 🗡️
