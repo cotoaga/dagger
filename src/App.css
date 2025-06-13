@@ -426,3 +426,118 @@ html.dark {
   margin: 0;
   height: calc(100vh - 140px);
 }
+
+/* View Toggle Styles */
+.view-toggle {
+  display: flex;
+  background: #f3f4f6;
+  border-radius: 6px;
+  padding: 4px;
+  margin: 0 16px;
+}
+
+.app.dark .view-toggle {
+  background: #374151;
+}
+
+.view-toggle button {
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  color: #6b7280;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.app.dark .view-toggle button {
+  color: #9ca3af;
+}
+
+.view-toggle button.active {
+  background: #3b82f6;
+  color: white;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.app.dark .view-toggle button:hover:not(.active) {
+  background: #4b5563;
+  color: #e5e7eb;
+}
+
+/* Graph View Styles */
+.graph-view {
+  width: 100%;
+  height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+  background: #f9fafb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.app.dark .graph-view {
+  background: #1f2937;
+}
+
+.graph-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  color: #374151;
+}
+
+.app.dark .graph-header {
+  background: #374151;
+  border-bottom-color: #4b5563;
+  color: #e5e7eb;
+}
+
+.graph-header h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.conversation-count {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.app.dark .conversation-count {
+  color: #9ca3af;
+}
+
+.graph-container {
+  flex: 1;
+  position: relative;
+}
+
+/* Header Layout Updates */
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 24px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.app.dark .app-header {
+  background: #1f2937;
+  border-bottom-color: #374151;
+}
+
+.header-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}

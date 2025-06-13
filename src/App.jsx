@@ -23,9 +23,7 @@ function App() {
   const [selectedModel, setSelectedModel] = useState(() => {
     return localStorage.getItem('dagger-model') || 'claude-3-5-sonnet-20241022'
   })
-  const [currentView, setCurrentView] = useState(() => {
-    return localStorage.getItem('dagger-view') || 'linear'
-  })
+  const [currentView, setCurrentView] = useState('linear') // 'linear' | 'graph'
   const [selectedNodeId, setSelectedNodeId] = useState(null)
 
   // Load conversations on mount
@@ -203,6 +201,15 @@ function App() {
     URL.revokeObjectURL(url);
   }, [])
 
+  // Remove duplicate - already exists above
+
+  // Add conversation selection handler
+  const handleConversationSelect = useCallback((conversationId) => {
+    setCurrentConversationId(conversationId);
+    const conversation = graphModel.getConversation(conversationId);
+    console.log(`📍 Selected conversation ${conversation?.displayNumber}: ${conversation?.prompt}`);
+  }, [])
+
   if (!apiKey) {
     return (
       <div className={`app ${darkMode ? 'dark' : 'light'}`}>
@@ -310,12 +317,24 @@ function App() {
           <h1>🗡️ DAGGER</h1>
           <p>Knowledge Cartography Tool</p>
         </div>
+        
+        {/* View Toggle */}
+        <div className="view-toggle">
+          <button 
+            className={currentView === 'linear' ? 'active' : ''}
+            onClick={() => handleViewChange('linear')}
+          >
+            📝 Linear
+          </button>
+          <button 
+            className={currentView === 'graph' ? 'active' : ''}
+            onClick={() => handleViewChange('graph')}
+          >
+            🗺️ Graph
+          </button>
+        </div>
+
         <div className="header-actions">
-          <ViewToggle 
-            currentView={currentView}
-            onViewChange={handleViewChange}
-          />
-          
           <select 
             value={selectedModel}
             onChange={(e) => handleModelChange(e.target.value)}
@@ -445,11 +464,12 @@ function App() {
             </div>
           </>
         ) : (
-          <div style={{ padding: '40px', textAlign: 'center' }}>
-            <h2>🗺️ Graph View</h2>
-            <p>Graph visualization will be rebuilt in next phase</p>
-            <p>Current conversations: {conversations.length}</p>
-          </div>
+          <GraphView 
+            conversations={conversations}
+            currentConversationId={currentConversationId}
+            onConversationSelect={handleConversationSelect}
+            theme="dark"
+          />
         )}
       </main>
     </div>
