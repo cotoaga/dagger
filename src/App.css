@@ -852,3 +852,78 @@ html.dark {
   color: #e5e7eb;
   border-color: #4b5563;
 }
+
+/* GraphView Beta MVP styles */
+.graph-view {
+  width: 100%;
+  height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+  background: #f9fafb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.app.dark .graph-view {
+  background: #1f2937;
+}
+
+.graph-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  color: #374151;
+}
+
+.app.dark .graph-header {
+  background: #374151;
+  border-bottom-color: #4b5563;
+  color: #e5e7eb;
+}
+
+.graph-header h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.conversation-count {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.app.dark .conversation-count {
+  color: #9ca3af;
+}
+
+.graph-container {
+  flex: 1;
+  position: relative;
+}
+
+.cytoscape-container {
+  width: 100%;
+  height: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.app.dark .cytoscape-container {
+  border-color: #4b5563;
+}
+
+.merge-instructions {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #f59e0b;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  z-index: 1000;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}

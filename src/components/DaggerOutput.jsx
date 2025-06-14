@@ -3,9 +3,15 @@ import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { formatISODateTime } from '../models/GraphModel.js'
+import { graphModel } from '../models/GraphModel.js'
 
-export function DaggerOutput({ response, displayNumber, isLoading = false }) {
+export function DaggerOutput({ response, displayNumber, isLoading = false, conversationId, onBranch, onContinue }) {
   const [copyStatus, setCopyStatus] = useState('copy')
+  
+  // Check for merge status
+  const mergeInfo = conversationId ? graphModel.getMergeInfo(conversationId) : null
+  const conversation = conversationId ? graphModel.getConversation(conversationId) : null
+  const isThreadMerged = conversation ? graphModel.isThreadMerged(conversation.displayNumber) : false
   
   // Auto-collapse long responses (more than 3 lines)
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -137,7 +143,7 @@ export function DaggerOutput({ response, displayNumber, isLoading = false }) {
   }
 
   return (
-    <div className="dagger-output">
+    <div className={`dagger-output ${isThreadMerged ? 'merged-thread' : ''}`}>
       <div className="output-header">
         <span className="interaction-number">&gt;{displayNumber}</span>
         <div className="output-actions">
@@ -169,6 +175,46 @@ export function DaggerOutput({ response, displayNumber, isLoading = false }) {
           </ReactMarkdown>
         </div>
       </div>
+
+      {/* Merge status display */}
+      {mergeInfo && (
+        <div className="merge-status">
+          <span className="merge-icon">🔀</span>
+          <span className="merge-text">
+            Merged into conversation {mergeInfo.targetDisplayNumber} on {formatTimestamp(mergeInfo.timestamp)}
+          </span>
+        </div>
+      )}
+
+      {/* Conversation actions */}
+      {response && !isLoading && (
+        <div className="conversation-actions">
+          {!isThreadMerged && onBranch && onContinue && (
+            <>
+              <button 
+                onClick={() => onBranch(conversationId)}
+                className="action-btn branch-btn"
+                title="Create a branch from this conversation"
+              >
+                🍴 Branch
+              </button>
+              <button 
+                onClick={() => onContinue(conversationId)}
+                className="action-btn continue-btn"
+                title="Continue this conversation"
+              >
+                ➡️ Continue
+              </button>
+            </>
+          )}
+          
+          {isThreadMerged && (
+            <div className="merged-note">
+              This branch has been merged and cannot be continued
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="output-footer">
         <div className="metadata">
@@ -441,6 +487,110 @@ const styles = `
 
 .app.dark .markdown-content.collapsed::after {
   background: linear-gradient(transparent, rgba(31, 41, 55, 0.9));
+}
+
+/* Merged branch styles */
+.merged-thread {
+  opacity: 0.7;
+  border-left: 3px solid #f59e0b;
+}
+
+.merge-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(245, 158, 11, 0.1);
+  border-top: 1px solid rgba(245, 158, 11, 0.2);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+  font-size: 12px;
+  color: #f59e0b;
+}
+
+.merge-icon {
+  font-size: 14px;
+}
+
+.merge-text {
+  flex: 1;
+}
+
+.conversation-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid #e5e7eb;
+  background: #f8fafc;
+}
+
+.action-btn {
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  background: transparent;
+  color: #6b7280;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.action-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.branch-btn:hover {
+  background: #f59e0b;
+  border-color: #f59e0b;
+  color: #fff;
+}
+
+.continue-btn:hover {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #fff;
+}
+
+.merged-note {
+  font-size: 12px;
+  color: #6b7280;
+  font-style: italic;
+  padding: 8px 0;
+}
+
+/* Dark mode support for merge features */
+.app.dark .merged-thread {
+  border-left-color: #f59e0b;
+}
+
+.app.dark .merge-status {
+  background: rgba(245, 158, 11, 0.2);
+  border-top-color: rgba(245, 158, 11, 0.3);
+  border-bottom-color: rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+}
+
+.app.dark .conversation-actions {
+  border-top-color: #374151;
+  background: #111827;
+}
+
+.app.dark .action-btn {
+  border-color: #4b5563;
+  color: #9ca3af;
+}
+
+.app.dark .action-btn:hover {
+  background: #374151;
+  color: #e5e7eb;
+}
+
+.app.dark .merged-note {
+  color: #9ca3af;
 }
 `
 

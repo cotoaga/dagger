@@ -9,10 +9,12 @@ cytoscape.use(dagre);
 /**
  * GraphView v2.0 - Works with clean conversation model
  * One conversation = one node with prompt + response
+ * Added drag-to-merge functionality for Beta MVP
  */
-export function GraphView({ conversations, currentConversationId, onConversationSelect, theme }) {
+export function GraphView({ conversations, currentConversationId, onConversationSelect, onMergeNodes, graphModel, theme }) {
   const containerRef = useRef(null);
   const [cy, setCy] = useState(null);
+  const [dragSource, setDragSource] = useState(null);
 
   // Transform clean conversations to Cytoscape elements
   const createGraphElements = (conversations) => {
@@ -156,6 +158,16 @@ export function GraphView({ conversations, currentConversationId, onConversation
       classes.push(`branch-${conversation.branchType}`);
     }
 
+    // Add end node class (for merge functionality)
+    if (graphModel && graphModel.isEndNode(conversation.id)) {
+      classes.push('end-node');
+    }
+
+    // Add merged class
+    if (graphModel && graphModel.isThreadMerged(conversation.displayNumber)) {
+      classes.push('merged');
+    }
+
     return classes.join(' ');
   };
 
@@ -269,6 +281,54 @@ export function GraphView({ conversations, currentConversationId, onConversation
         }
       },
 
+      // Enhanced drag-to-merge visual states
+      {
+        selector: 'node.dragging-source',
+        style: {
+          'border-color': '#ff6b6b',
+          'border-width': 4,
+          'opacity': 0.8
+        }
+      },
+
+      {
+        selector: 'node.valid-merge-target',
+        style: {
+          'border-color': '#50e3c2',
+          'border-width': 2,
+          'border-style': 'dashed'
+        }
+      },
+
+      {
+        selector: 'node.merge-target-hover',
+        style: {
+          'background-color': '#50e3c2',
+          'border-color': '#50e3c2',
+          'border-width': 4,
+          'border-style': 'solid'
+        }
+      },
+
+      // End node indicator (nodes that can be merged)
+      {
+        selector: 'node.end-node',
+        style: {
+          'border-color': '#f59e0b',
+          'border-width': 4
+        }
+      },
+
+      // Merged node visual state
+      {
+        selector: 'node.merged',
+        style: {
+          'opacity': 0.6,
+          'border-style': 'dashed',
+          'background-color': '#f3f4f6'
+        }
+      },
+
       // Edges
       {
         selector: 'edge.main-thread-edge',
@@ -295,7 +355,7 @@ export function GraphView({ conversations, currentConversationId, onConversation
     userZoomingEnabled: true,
     userPanningEnabled: true,
     boxSelectionEnabled: false,
-    autoungrabify: true
+    autoungrabify: false  // Allow node dragging for merge functionality
   });
 
   // Initialize Cytoscape
@@ -313,6 +373,88 @@ export function GraphView({ conversations, currentConversationId, onConversation
       if (onConversationSelect) {
         onConversationSelect(nodeId);
       }
+    });
+
+    // Improved drag-to-merge functionality
+    let dragSourceNode = null;
+    let validDropTarget = null;
+
+    // Start drag - only for end nodes
+    cyInstance.on('grab', 'node', (event) => {
+      const node = event.target;
+      const nodeId = node.id();
+      
+      console.log('🎯 Grabbed node:', nodeId, 'isEndNode:', graphModel ? graphModel.isEndNode(nodeId) : 'no graphModel');
+      
+      if (graphModel && graphModel.isEndNode(nodeId)) {
+        dragSourceNode = nodeId;
+        setDragSource(nodeId);
+        node.addClass('dragging-source');
+        console.log('✅ Started dragging end node:', nodeId);
+        
+        // Highlight all valid merge targets
+        cyInstance.nodes().forEach(targetNode => {
+          const targetId = targetNode.id();
+          if (targetId !== nodeId && graphModel.canMergeNodes(nodeId, targetId)) {
+            targetNode.addClass('valid-merge-target');
+            console.log('🎯 Valid merge target:', targetId);
+          }
+        });
+      }
+    });
+
+    // During drag - detect hover over valid targets
+    cyInstance.on('drag', 'node', (event) => {
+      if (!dragSourceNode || !graphModel) return;
+      
+      const draggedNode = event.target;
+      const position = draggedNode.position();
+      
+      // Clear previous hover states
+      cyInstance.nodes('.merge-target-hover').removeClass('merge-target-hover');
+      validDropTarget = null;
+      
+      // Find nodes within drop distance
+      cyInstance.nodes('.valid-merge-target').forEach(targetNode => {
+        const targetPos = targetNode.position();
+        const distance = Math.sqrt(
+          Math.pow(targetPos.x - position.x, 2) + 
+          Math.pow(targetPos.y - position.y, 2)
+        );
+        
+        console.log('📏 Distance to', targetNode.id(), ':', distance);
+        
+        if (distance < 60) { // Increased drop zone
+          targetNode.addClass('merge-target-hover');
+          validDropTarget = targetNode.id();
+          console.log('🎯 Hovering over valid target:', validDropTarget);
+        }
+      });
+    });
+
+    // End drag - perform merge if over valid target
+    cyInstance.on('free', 'node', (event) => {
+      console.log('🏁 Drag ended. Source:', dragSourceNode, 'Target:', validDropTarget);
+      
+      if (dragSourceNode && validDropTarget) {
+        console.log('🔀 Attempting merge:', dragSourceNode, '→', validDropTarget);
+        
+        try {
+          onMergeNodes && onMergeNodes(dragSourceNode, validDropTarget);
+          console.log('✅ Merge successful!');
+        } catch (error) {
+          console.error('❌ Merge failed:', error);
+          alert(`Merge failed: ${error.message}`);
+        }
+      } else if (dragSourceNode) {
+        console.log('❌ No valid drop target found');
+      }
+      
+      // Clean up all classes
+      cyInstance.nodes().removeClass('dragging-source valid-merge-target merge-target-hover');
+      dragSourceNode = null;
+      validDropTarget = null;
+      setDragSource(null);
     });
 
     // Auto-fit and center
@@ -351,22 +493,29 @@ Status: ${data.status}`;
   return (
     <div className="graph-view">
       <div className="graph-header">
-        <h3>Knowledge Map</h3>
+        <h3>🗡️ Knowledge Graph</h3>
         <span className="conversation-count">
           {conversations?.length || 0} conversations
         </span>
       </div>
-      <div 
-        ref={containerRef} 
-        className="graph-container"
-        style={{ 
-          width: '100%', 
-          height: 'calc(100% - 60px)',
-          background: '#1a202c',
-          border: '1px solid #4a5568',
-          borderRadius: '8px'
-        }}
-      />
+      <div className="graph-container">
+        <div 
+          ref={containerRef} 
+          className="cytoscape-container"
+          style={{ 
+            width: '100%', 
+            height: '100%',
+            background: '#1a202c',
+            border: '1px solid #4a5568',
+            borderRadius: '8px'
+          }}
+        />
+        {dragSource && (
+          <div className="merge-instructions">
+            🔀 Drag to merge with another end node
+          </div>
+        )}
+      </div>
     </div>
   );
 }

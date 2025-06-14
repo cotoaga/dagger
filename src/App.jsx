@@ -5,6 +5,7 @@ import { DaggerInputDisplay } from './components/DaggerInputDisplay.jsx'
 import { GraphView } from './components/GraphView.jsx'
 import { ViewToggle } from './components/ViewToggle.jsx'
 import { ForkMenu } from './components/ForkMenu.jsx'
+import ActiveThreads from './components/ActiveThreads.jsx'
 import { graphModel } from './models/GraphModel.js'
 import { ClaudeAPI } from './services/ClaudeAPI.js'
 import './App.css'
@@ -36,6 +37,9 @@ function App() {
     const loadedConversations = graphModel.getAllConversations();
     setConversations(loadedConversations);
     console.log('📊 Storage stats:', graphModel.getStorageStats());
+    
+    // Clean up any ghost branches on startup
+    graphModel.cleanupEmptyThreads();
     
     // Try to load API key from localStorage
     const savedApiKey = localStorage.getItem('claude-api-key')
@@ -384,6 +388,21 @@ function App() {
     });
   }, [])
 
+  // Handle merge nodes operation
+  const handleMergeNodes = useCallback((sourceConversationId, targetConversationId) => {
+    try {
+      graphModel.mergeNodes(sourceConversationId, targetConversationId);
+      console.log(`✅ Merged node ${sourceConversationId} into ${targetConversationId}`);
+      
+      // Update UI to reflect merge
+      setConversations(graphModel.getAllConversationsWithBranches());
+      
+    } catch (error) {
+      console.error('❌ Merge failed:', error.message);
+      alert(`Merge failed: ${error.message}`);
+    }
+  }, [])
+
   if (!apiKey) {
     return (
       <div className={`app ${darkMode ? 'dark' : 'light'}`}>
@@ -644,6 +663,9 @@ function App() {
                       }}
                       displayNumber={conversation.displayNumber}
                       isLoading={conversation.status === 'processing'}
+                      conversationId={conversation.id}
+                      onBranch={handleForkConversation}
+                      onContinue={handleConversationSelect}
                     />
                   )}
                   
@@ -683,6 +705,8 @@ function App() {
             conversations={graphModel.getAllConversationsWithBranches()}
             currentConversationId={currentConversationId}
             onConversationSelect={handleConversationSelect}
+            onMergeNodes={handleMergeNodes}
+            graphModel={graphModel}
             theme="dark"
           />
         )}
@@ -699,45 +723,15 @@ function App() {
         />
       )}
 
-      {/* Thread Debugging Panel (development only) */}
-      {import.meta.env.DEV && claudeAPI && (
-        <div className="thread-debug" style={{
-          position: 'fixed', 
-          bottom: '10px', 
-          right: '10px', 
-          background: '#2d3748', 
-          padding: '10px', 
-          borderRadius: '6px',
-          fontSize: '12px',
-          color: '#e2e8f0',
-          maxWidth: '300px',
-          border: '1px solid #4a5568'
-        }}>
-          <strong>🧵 Active Threads:</strong>
-          {claudeAPI.getAllThreads().map(thread => (
-            <div key={thread.threadId} style={{ 
-              marginTop: '4px',
-              padding: '4px',
-              background: '#374151',
-              borderRadius: '3px'
-            }}>
-              <div style={{ fontWeight: 'bold' }}>{thread.threadId}</div>
-              <div style={{ color: '#9ca3af' }}>{thread.messageCount} messages</div>
-              <div style={{ 
-                color: '#d1d5db',
-                fontSize: '10px',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
-              }}>
-                {thread.lastMessage}
-              </div>
-            </div>
-          ))}
-          {claudeAPI.getAllThreads().length === 0 && (
-            <div style={{ color: '#9ca3af', marginTop: '4px' }}>No active threads</div>
-          )}
-        </div>
+      {/* Enhanced Thread Debugging Panel (development only) */}
+      {import.meta.env.DEV && (
+        <ActiveThreads 
+          graphModel={graphModel}
+          onSwitchThread={(threadId) => {
+            console.log('🔄 Switching to thread:', threadId);
+            // Thread switching logic could be implemented here
+          }}
+        />
       )}
     </div>
   )

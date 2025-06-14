@@ -33,6 +33,10 @@ export class GraphModel {
     this.branches = new Map();          // parentUUID -> [childUUIDs]
     this.conversationCounter = 0;       // For display numbers
     
+    // Merge state management
+    this.mergedBranches = new Set();    // Track closed branches
+    this.mergeHistory = new Map();      // Track merge operations
+    
     this.loadFromStorage();
   }
   
@@ -53,6 +57,7 @@ export class GraphModel {
       processingTime: metadata.processingTime || 0,
       tokenCount: metadata.tokenCount || 0,
       model: metadata.model || 'unknown',
+      temperature: metadata.temperature || 0.7,
       
       // Thread structure
       parentId: null,                   // Main thread has no parent
@@ -166,6 +171,7 @@ export class GraphModel {
       markdown += `- Processing Time: ${conv.processingTime}ms\n`;
       markdown += `- Tokens: ${conv.tokenCount}\n`;
       markdown += `- Model: ${this.getModelDisplayName(conv.model)} (\`${conv.model}\`)\n`;
+      markdown += `- Temperature: ${conv.temperature}\n`;
       markdown += `- Status: ${conv.status}\n\n`;
       
       markdown += `---\n\n`;
@@ -192,6 +198,8 @@ export class GraphModel {
         mainThread: this.mainThread,
         branches: Array.from(this.branches.entries()),
         conversationCounter: this.conversationCounter,
+        mergedBranches: Array.from(this.mergedBranches),
+        mergeHistory: Array.from(this.mergeHistory.entries()),
         version: '2.0',
         savedAt: Date.now()
       };
@@ -222,6 +230,8 @@ export class GraphModel {
       this.mainThread = data.mainThread || [];
       this.branches = new Map(data.branches || []);
       this.conversationCounter = data.conversationCounter || 0;
+      this.mergedBranches = new Set(data.mergedBranches || []);
+      this.mergeHistory = new Map(data.mergeHistory || []);
       
       console.log(`✅ Loaded ${this.conversations.size} conversations from localStorage`);
       
@@ -342,6 +352,7 @@ export class GraphModel {
       processingTime: 0,
       tokenCount: 0,
       model: 'unknown',
+      temperature: 0.7,
       
       // Status
       status: 'ready' // 'ready', 'active', 'processing', 'complete'
@@ -403,6 +414,7 @@ export class GraphModel {
       processingTime: metadata.processingTime || 0,
       tokenCount: metadata.tokenCount || 0,
       model: metadata.model || 'unknown',
+      temperature: metadata.temperature || 0.7,
       status: response ? 'complete' : 'processing'
     };
     
@@ -507,6 +519,264 @@ export class GraphModel {
       return parts.slice(0, 2).join('.') + '.';
     }
     return displayNumber;
+  }
+
+  // =================== MERGE FUNCTIONALITY ===================
+
+  /**
+   * Calculate node hierarchy level (0 = main, 1 = first branch, etc.)
+   */
+  getHierarchyLevel(conversationId) {
+    const conversation = this.conversations.get(conversationId);
+    if (!conversation) return -1;
+    
+    if (!this.isBranchId(conversation.displayNumber)) {
+      return 0; // Main thread
+    }
+    
+    const displayParts = this.parseHierarchicalId(conversation.displayNumber);
+    return Math.floor((displayParts.length - 1) / 2); // branch = 1, sub-branch = 2
+  }
+
+  /**
+   * Check if a merge is valid according to hierarchy rules
+   */
+  canMergeNodes(sourceConversationId, targetConversationId) {
+    const sourceConv = this.conversations.get(sourceConversationId);
+    const targetConv = this.conversations.get(targetConversationId);
+    
+    if (!sourceConv || !targetConv) return false;
+    if (!this.isEndNode(sourceConversationId) || !this.isEndNode(targetConversationId)) return false;
+    if (sourceConversationId === targetConversationId) return false;
+    
+    const sourceLevel = this.getHierarchyLevel(sourceConversationId);
+    const targetLevel = this.getHierarchyLevel(targetConversationId);
+    
+    // Can only merge to main branch or up the hierarchy
+    return targetLevel === 0 || targetLevel <= sourceLevel;
+  }
+
+  /**
+   * Check if conversation is an end node (no children in its branch)
+   */
+  isEndNode(conversationId) {
+    const conversation = this.conversations.get(conversationId);
+    if (!conversation) return false;
+    
+    // For main thread, check if it's the last in mainThread array
+    if (!this.isBranchId(conversation.displayNumber)) {
+      const lastMainId = this.mainThread[this.mainThread.length - 1];
+      return lastMainId === conversationId;
+    }
+    
+    // For branches, check if it's the last in the branch thread
+    const branchThread = this.getBranchThread(conversation.displayNumber);
+    const lastInBranch = branchThread[branchThread.length - 1];
+    return lastInBranch?.id === conversationId;
+  }
+
+  /**
+   * Perform the merge operation
+   */
+  mergeNodes(sourceConversationId, targetConversationId) {
+    if (!this.canMergeNodes(sourceConversationId, targetConversationId)) {
+      throw new Error('Invalid merge operation - check hierarchy rules');
+    }
+
+    const sourceConv = this.conversations.get(sourceConversationId);
+    const targetConv = this.conversations.get(targetConversationId);
+
+    // Create merge record
+    const mergeId = uuidv4();
+    const mergeRecord = {
+      id: mergeId,
+      sourceConversationId: sourceConversationId,
+      targetConversationId: targetConversationId,
+      sourceDisplayNumber: sourceConv.displayNumber,
+      targetDisplayNumber: targetConv.displayNumber,
+      timestamp: Date.now(),
+      type: 'merge'
+    };
+
+    // Mark the source branch as merged
+    const sourceBranchPrefix = this.getBranchPrefix(sourceConv.displayNumber);
+    this.mergedBranches.add(sourceBranchPrefix);
+    
+    this.mergeHistory.set(sourceConversationId, {
+      targetConversationId: targetConversationId,
+      targetDisplayNumber: targetConv.displayNumber,
+      timestamp: Date.now(),
+      sourceBranchPrefix: sourceBranchPrefix
+    });
+
+    this.saveToStorage();
+    
+    console.log(`✅ Merged ${sourceConv.displayNumber} into ${targetConv.displayNumber}`);
+    
+    return mergeId;
+  }
+
+  /**
+   * Get merge info for a conversation
+   */
+  getMergeInfo(conversationId) {
+    return this.mergeHistory.get(conversationId);
+  }
+
+  /**
+   * Check if a branch thread is merged (closed)
+   */
+  isThreadMerged(displayNumber) {
+    if (!this.isBranchId(displayNumber)) return false;
+    
+    const branchPrefix = this.getBranchPrefix(displayNumber);
+    return this.mergedBranches.has(branchPrefix);
+  }
+
+  /**
+   * Get all end nodes (for UI highlighting)
+   */
+  getAllEndNodes() {
+    const endNodes = [];
+    
+    for (const [id, conversation] of this.conversations) {
+      if (this.isEndNode(id) && !this.isThreadMerged(conversation.displayNumber)) {
+        endNodes.push({
+          id: id,
+          displayNumber: conversation.displayNumber,
+          hierarchyLevel: this.getHierarchyLevel(id)
+        });
+      }
+    }
+    
+    return endNodes;
+  }
+
+  // =================== BRANCH MANAGEMENT FIXES ===================
+
+  /**
+   * Create branch only when first message is added (prevents ghost branches)
+   */
+  createBranchInfo(fromNodeId, branchName = null) {
+    const fromConversation = this.conversations.get(fromNodeId);
+    if (!fromConversation) {
+      throw new Error(`Cannot create branch: conversation ${fromNodeId} not found`);
+    }
+
+    // Generate branch display number based on parent
+    const parentDisplayNumber = fromConversation.displayNumber;
+    const branchDisplayNumber = this.generateBranchId(parentDisplayNumber);
+    
+    console.log('🌿 Creating branch info:', branchDisplayNumber, 'from conversation:', fromNodeId);
+    
+    // DON'T create the conversation yet - wait for first message
+    return {
+      branchDisplayNumber: branchDisplayNumber,
+      parentConversationId: fromNodeId,
+      parentDisplayNumber: parentDisplayNumber
+    };
+  }
+
+  /**
+   * Add first message to branch (this actually creates the branch conversation)
+   */
+  addBranchMessage(branchInfo, content, options = {}) {
+    const conversationId = uuidv4();
+    
+    const conversation = {
+      id: conversationId,
+      displayNumber: branchInfo.branchDisplayNumber,
+      prompt: content,
+      response: '',
+      timestamp: Date.now(),
+      
+      // Branch metadata
+      parentId: branchInfo.parentConversationId,
+      parentDisplayNumber: branchInfo.parentDisplayNumber,
+      branchType: options.branchType || 'virgin',
+      depth: this.calculateDepth(branchInfo.parentConversationId) + 1,
+      
+      // Conversation metadata
+      processingTime: 0,
+      tokenCount: 0,
+      model: options.model || 'claude-sonnet-4-20250514',
+      temperature: options.temperature || 0.7,
+      status: 'processing'
+    };
+
+    this.conversations.set(conversationId, conversation);
+    
+    // Track branch relationship
+    if (!this.branches.has(branchInfo.parentConversationId)) {
+      this.branches.set(branchInfo.parentConversationId, []);
+    }
+    this.branches.get(branchInfo.parentConversationId).push(conversationId);
+    
+    console.log('✅ Branch conversation created:', branchInfo.branchDisplayNumber, 'with first message');
+    this.saveToStorage();
+    return conversation;
+  }
+
+  /**
+   * Clean up empty threads and ghost branches
+   */
+  cleanupEmptyThreads() {
+    const conversationsWithContent = new Set();
+    
+    // Find all conversations that have actual content
+    for (const [id, conversation] of this.conversations) {
+      if (conversation.prompt && conversation.prompt.trim()) {
+        conversationsWithContent.add(id);
+      }
+    }
+    
+    console.log('🧹 Conversations with content:', conversationsWithContent.size);
+    
+    // Remove any empty conversations (shouldn't happen with proper flow)
+    for (const [id, conversation] of this.conversations) {
+      if (!conversation.prompt || !conversation.prompt.trim()) {
+        console.log('🗑️ Removing empty conversation:', id, conversation.displayNumber);
+        this.conversations.delete(id);
+      }
+    }
+    
+    this.saveToStorage();
+  }
+
+  /**
+   * Get thread summary for debugging
+   */
+  getThreadSummary() {
+    const threadGroups = new Map();
+    
+    // Group conversations by thread (main vs branches)
+    for (const [id, conversation] of this.conversations) {
+      let threadKey;
+      
+      if (this.isBranchId(conversation.displayNumber)) {
+        // Branch conversation - group by branch prefix
+        threadKey = this.getBranchPrefix(conversation.displayNumber);
+      } else {
+        // Main thread conversation
+        threadKey = 'main';
+      }
+      
+      if (!threadGroups.has(threadKey)) {
+        threadGroups.set(threadKey, {
+          id: threadKey,
+          messageCount: 0,
+          lastMessage: null,
+          conversations: []
+        });
+      }
+      
+      const thread = threadGroups.get(threadKey);
+      thread.messageCount++;
+      thread.lastMessage = conversation.prompt;
+      thread.conversations.push(conversation);
+    }
+    
+    return Array.from(threadGroups.values());
   }
 }
 

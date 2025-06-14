@@ -3,6 +3,7 @@ import TextareaAutosize from 'react-textarea-autosize'
 
 export function DaggerInput({ onSubmit, displayNumber, placeholder = "Ask anything, explore ideas, branch into new territories..." }) {
   const [content, setContent] = useState('')
+  const [temperature, setTemperature] = useState(0.7)
 
   const getCharCount = useCallback(() => content.length, [content])
   
@@ -23,6 +24,7 @@ export function DaggerInput({ onSubmit, displayNumber, placeholder = "Ask anythi
 
     const submission = {
       content: content.trim(),
+      temperature: temperature,
       timestamp: new Date(),
       displayNumber,
       charCount: getCharCount(),
@@ -31,7 +33,7 @@ export function DaggerInput({ onSubmit, displayNumber, placeholder = "Ask anythi
 
     onSubmit(submission)
     setContent('')
-  }, [content, displayNumber, onSubmit, getCharCount, getWordCount])
+  }, [content, temperature, displayNumber, onSubmit, getCharCount, getWordCount])
 
   return (
     <div className="dagger-input">
@@ -40,6 +42,28 @@ export function DaggerInput({ onSubmit, displayNumber, placeholder = "Ask anythi
         <div className="stats">
           <span className="char-count">{getCharCount()} chars</span>
           <span className="word-count">{getWordCount()} words</span>
+        </div>
+      </div>
+      
+      <div className="dagger-input-controls">
+        <div className="control-group">
+          <label htmlFor="temperature-slider">
+            Temperature: <span className="temperature-value">{temperature}</span>
+          </label>
+          <input
+            type="range"
+            id="temperature-slider"
+            min="0.1"
+            max="1.0"
+            step="0.1"
+            value={temperature}
+            onChange={(e) => setTemperature(parseFloat(e.target.value))}
+            className="temperature-slider"
+          />
+          <div className="temperature-labels">
+            <span>Focused</span>
+            <span>Creative</span>
+          </div>
         </div>
       </div>
       
@@ -102,6 +126,67 @@ const styles = `
   gap: 16px;
 }
 
+.dagger-input-controls {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.control-group label {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.temperature-slider {
+  width: 120px;
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+}
+
+.temperature-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #3b82f6;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.temperature-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: #3b82f6;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+.temperature-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.temperature-value {
+  color: #3b82f6;
+  font-weight: 600;
+}
+
 .dagger-textarea:focus {
   border-color: #3b82f6 !important;
   background-color: #ffffff !important;
@@ -147,6 +232,31 @@ const styles = `
 
 .app.dark .shortcut-hint {
   color: #6b7280;
+}
+
+/* Dark mode support for temperature controls */
+.app.dark .control-group label {
+  color: #9ca3af;
+}
+
+.app.dark .temperature-slider {
+  background: #4b5563;
+}
+
+.app.dark .temperature-slider::-webkit-slider-thumb {
+  background: #3b82f6;
+}
+
+.app.dark .temperature-slider::-moz-range-thumb {
+  background: #3b82f6;
+}
+
+.app.dark .temperature-labels {
+  color: #6b7280;
+}
+
+.app.dark .temperature-value {
+  color: #3b82f6;
 }
 `
 
