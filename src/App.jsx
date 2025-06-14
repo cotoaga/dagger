@@ -4,6 +4,7 @@ import { DaggerOutput } from './components/DaggerOutput.jsx'
 import { DaggerInputDisplay } from './components/DaggerInputDisplay.jsx'
 import { GraphView } from './components/GraphView.jsx'
 import { ViewToggle } from './components/ViewToggle.jsx'
+import { ForkMenu } from './components/ForkMenu.jsx'
 import { graphModel } from './models/GraphModel.js'
 import { ClaudeAPI } from './services/ClaudeAPI.js'
 import './App.css'
@@ -25,6 +26,9 @@ function App() {
   })
   const [currentView, setCurrentView] = useState('linear') // 'linear' | 'graph'
   const [selectedNodeId, setSelectedNodeId] = useState(null)
+  const [showForkMenu, setShowForkMenu] = useState(false)
+  const [forkSourceId, setForkSourceId] = useState(null)
+  const [currentBranchContext, setCurrentBranchContext] = useState(null)
 
   // Load conversations on mount
   useEffect(() => {
@@ -130,13 +134,25 @@ function App() {
     
     setIsProcessing(true);
     
-    // Create conversation with prompt
-    const newConversation = graphModel.addConversation(prompt, '', {
-      status: 'processing'
-    });
+    let newConversation;
+    
+    if (currentBranchContext) {
+      // Add to current branch
+      newConversation = graphModel.addConversationToBranch(
+        currentConversationId, 
+        prompt, 
+        '', 
+        { status: 'processing' }
+      );
+    } else {
+      // Add to main thread
+      newConversation = graphModel.addConversation(prompt, '', {
+        status: 'processing'
+      });
+    }
     
     // Update UI immediately
-    setConversations(graphModel.getAllConversations());
+    setConversations(currentBranchContext ? graphModel.getAllConversationsWithBranches() : graphModel.getAllConversations());
     setCurrentConversationId(newConversation.id);
     
     try {
@@ -169,12 +185,33 @@ function App() {
     } finally {
       setIsProcessing(false);
     }
-  }, [claudeAPI, isProcessing])
+  }, [claudeAPI, isProcessing, currentBranchContext, currentConversationId])
+
+  // Get conversations to display based on current context
+  const getDisplayConversations = useCallback(() => {
+    if (currentBranchContext) {
+      // Show all conversations in this branch thread
+      const branchThread = graphModel.getBranchThread(currentBranchContext + '.0');
+      console.log(`📋 Displaying branch thread:`, branchThread.map(c => c.displayNumber));
+      return branchThread;
+    } else {
+      // Show main thread only
+      return graphModel.getAllConversations(); // Main thread conversations
+    }
+  }, [currentBranchContext])
 
   const getNextDisplayNumber = useCallback(() => {
     // Return the next conversation number that would be assigned
-    return (graphModel.conversationCounter + 1).toString()
-  }, [])
+    if (currentBranchContext) {
+      // In branch context, show the next branch number
+      const currentBranch = graphModel.getConversation(currentConversationId);
+      if (currentBranch) {
+        return graphModel.generateNextInBranch(currentBranch.displayNumber);
+      }
+    }
+    // Main thread - use current counter (zero-indexed)
+    return graphModel.conversationCounter.toString()
+  }, [currentBranchContext, currentConversationId])
 
   // TEST: Add reset button for development
   const handleReset = useCallback(() => {
@@ -205,9 +242,85 @@ function App() {
 
   // Add conversation selection handler
   const handleConversationSelect = useCallback((conversationId) => {
-    setCurrentConversationId(conversationId);
     const conversation = graphModel.getConversation(conversationId);
-    console.log(`📍 Selected conversation ${conversation?.displayNumber}: ${conversation?.prompt}`);
+    if (!conversation) return;
+    
+    console.log(`🔍 Selected conversation:`, conversation);
+    console.log(`🔍 Display number:`, conversation.displayNumber);
+    console.log(`🔍 Is branch:`, graphModel.isBranchId(conversation.displayNumber));
+    
+    setCurrentConversationId(conversationId);
+    
+    // Determine context based on conversation type
+    if (graphModel.isBranchId(conversation.displayNumber)) {
+      // Get all conversations in this branch thread
+      const branchThread = graphModel.getBranchThread(conversation.displayNumber);
+      console.log(`🔍 Branch thread:`, branchThread.map(c => c.displayNumber));
+      
+      // Set branch context to the branch prefix (e.g., "1.1" for "1.1.2")
+      const branchPrefix = conversation.displayNumber.split('.').slice(0, 2).join('.');
+      setCurrentBranchContext(branchPrefix);
+      console.log(`📍 Switched to branch context: ${branchPrefix}`);
+    } else {
+      // Main thread conversation - show main context
+      setCurrentBranchContext(null);
+      console.log(`📍 Switched to main thread: ${conversation.displayNumber}`);
+    }
+    
+    // Switch to linear view to show selected conversation
+    setCurrentView('linear');
+  }, [])
+
+  // Add fork handler
+  const handleForkConversation = useCallback((conversationId) => {
+    const conversation = graphModel.getConversation(conversationId);
+    console.log(`🍴 Fork conversation ${conversation.displayNumber}: ${conversation.prompt}`);
+    
+    setForkSourceId(conversationId);
+    setShowForkMenu(true);
+  }, [])
+
+  // Add fork creation handler (real implementation)
+  const handleCreateFork = useCallback(async (sourceId, branchType) => {
+    try {
+      console.log(`🍴 Creating ${branchType} branch from conversation ${sourceId}`);
+      
+      // Create actual branch in GraphModel
+      const newBranch = graphModel.createBranch(sourceId, branchType);
+      
+      // Update both conversation lists
+      setConversations(graphModel.getAllConversations()); // For linear view
+      
+      // If in graph view, we need to include branches
+      if (currentView === 'graph') {
+        setConversations(graphModel.getAllConversationsWithBranches());
+      }
+      
+      console.log(`✅ Created branch ${newBranch.displayNumber} (${branchType})`);
+      
+      // Close modal
+      setShowForkMenu(false);
+      setForkSourceId(null);
+      
+      // Optional: Switch to graph view to see the branch
+      // setCurrentView('graph');
+      
+    } catch (error) {
+      console.error('❌ Fork creation failed:', error);
+      alert(`Failed to create fork: ${error.message}`);
+    }
+  }, [currentView])
+
+  // Add copy conversation handler
+  const copyConversation = useCallback((conversation) => {
+    const text = `**Conversation ${conversation.displayNumber}**\n\n**Prompt:** ${conversation.prompt}\n\n**Response:** ${conversation.response}`;
+    
+    navigator.clipboard.writeText(text).then(() => {
+      console.log(`📋 Copied conversation ${conversation.displayNumber}`);
+      // Optional: show brief success message
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+    });
   }, [])
 
   if (!apiKey) {
@@ -366,7 +479,7 @@ function App() {
             }}
             title="Export clean v2.0 conversations"
           >
-            📤 Export Clean
+            📥 Export
           </button>
           
           <button 
@@ -403,8 +516,24 @@ function App() {
       <main className="app-main">
         {currentView === 'linear' ? (
           <>
+            {currentBranchContext && (
+              <div className="branch-context-indicator">
+                <span className="context-label">Branch Context:</span>
+                <span className="context-path">{currentBranchContext.displayNumber}</span>
+                <button 
+                  onClick={() => {
+                    setCurrentBranchContext(null);
+                    setCurrentView('graph');
+                  }}
+                  className="return-to-graph-btn"
+                >
+                  🗺️ View Full Graph
+                </button>
+              </div>
+            )}
+            
             <div className="conversation">
-              {conversations.map((conversation) => (
+              {getDisplayConversations().map((conversation) => (
                 <div 
                   key={conversation.id}
                   data-node-id={conversation.id}
@@ -417,6 +546,9 @@ function App() {
                       timestamp: new Date(conversation.timestamp),
                       displayNumber: conversation.displayNumber
                     }}
+                    onCopy={() => copyConversation(conversation)}
+                    onFork={handleForkConversation}
+                    showActions={conversation.response && conversation.status === 'complete'}
                   />
                   
                   {conversation.response && (
@@ -432,6 +564,7 @@ function App() {
                       isLoading={conversation.status === 'processing'}
                     />
                   )}
+                  
                 </div>
               ))}
 
@@ -454,7 +587,7 @@ function App() {
 
             <div className="app-footer">
               <div className="stats">
-                <span>{conversations.length} conversations</span>
+                <span>{getDisplayConversations().length} conversations {currentBranchContext ? `(branch ${currentBranchContext})` : '(main thread)'}</span>
                 <span>{claudeAPI ? '🟢 Connected' : '🔴 Disconnected'}</span>
               </div>
               <p className="meta-note">
@@ -465,13 +598,24 @@ function App() {
           </>
         ) : (
           <GraphView 
-            conversations={conversations}
+            conversations={graphModel.getAllConversationsWithBranches()}
             currentConversationId={currentConversationId}
             onConversationSelect={handleConversationSelect}
             theme="dark"
           />
         )}
       </main>
+
+      {showForkMenu && (
+        <ForkMenu
+          sourceConversationId={forkSourceId}
+          onCreateFork={handleCreateFork}
+          onClose={() => {
+            setShowForkMenu(false);
+            setForkSourceId(null);
+          }}
+        />
+      )}
     </div>
   )
 }

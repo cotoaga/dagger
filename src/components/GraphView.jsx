@@ -19,40 +19,111 @@ export function GraphView({ conversations, currentConversationId, onConversation
       return { nodes: [], edges: [] };
     }
 
-    // Create nodes from conversations
+    // Create nodes (including branches)
     const nodes = conversations.map(conv => ({
       data: {
         id: conv.id,
         label: String(conv.displayNumber),
         displayNumber: conv.displayNumber,
-        prompt: truncateText(conv.prompt, 80),
-        response: truncateText(conv.response, 120),
+        prompt: truncateText(conv.prompt || 'New branch (ready)', 80),
+        response: truncateText(conv.response || 'Ready for conversation', 120),
         timestamp: formatTimestamp(conv.timestamp),
         processingTime: conv.processingTime,
         tokenCount: conv.tokenCount,
         status: conv.status,
-        model: conv.model
+        branchType: conv.branchType,
+        depth: conv.depth || 0
       },
       classes: getNodeClasses(conv, currentConversationId)
     }));
 
-    // Create edges (sequential flow for now)
+    // Create edges based on display number hierarchy
     const edges = [];
-    for (let i = 0; i < conversations.length - 1; i++) {
-      edges.push({
-        data: {
-          id: `edge-${conversations[i].id}-${conversations[i + 1].id}`,
-          source: conversations[i].id,
-          target: conversations[i + 1].id
-        },
-        classes: 'main-thread-edge'
-      });
-    }
+    
+    conversations.forEach(conv => {
+      const displayNum = String(conv.displayNumber);
+      
+      if (displayNum.includes('.')) {
+        // This is a branch node - determine the correct parent
+        let parentDisplayNum;
+        const parts = displayNum.split('.');
+        const lastNum = parseInt(parts[parts.length - 1]);
+        
+        if (lastNum === 0) {
+          // Branch start (like 1.1.0) - parent is main thread node
+          parentDisplayNum = getDisplayParent(displayNum);
+        } else {
+          // Branch continuation (like 1.1.1) - parent is previous in branch
+          parentDisplayNum = getBranchContinuationParent(displayNum);
+        }
+        
+        const parentConv = conversations.find(c => String(c.displayNumber) === parentDisplayNum);
+        
+        if (parentConv) {
+          edges.push({
+            data: {
+              id: `branch-${parentConv.id}-${conv.id}`,
+              source: parentConv.id,
+              target: conv.id
+            },
+            classes: 'branch-edge'
+          });
+        }
+      } else {
+        // Main thread node - connect to previous main thread node
+        const currentNum = parseInt(displayNum);
+        if (currentNum > 0) {
+          const prevDisplayNum = String(currentNum - 1);
+          const prevConv = conversations.find(c => String(c.displayNumber) === prevDisplayNum);
+          
+          if (prevConv) {
+            edges.push({
+              data: {
+                id: `main-${prevConv.id}-${conv.id}`,
+                source: prevConv.id,
+                target: conv.id
+              },
+              classes: 'main-thread-edge'
+            });
+          }
+        }
+      }
+    });
 
     return { nodes, edges };
   };
 
-  // Helper functions
+  // Helper functions for display hierarchy
+  const getDisplayParent = (displayNumber) => {
+    const parts = String(displayNumber).split('.');
+    
+    if (parts.length === 3) {
+      // Branch like "1.1.0" → parent is "1"
+      return parts[0];
+    } else if (parts.length > 3) {
+      // Sub-branch like "1.1.2.1.0" → parent is "1.1.2"
+      return parts.slice(0, -2).join('.');
+    } else {
+      // Invalid format
+      return null;
+    }
+  };
+
+  const getBranchContinuationParent = (displayNumber) => {
+    const parts = String(displayNumber).split('.');
+    const lastNum = parseInt(parts[parts.length - 1]);
+    
+    if (lastNum === 0) {
+      // This is branch start (like 1.1.0) - parent is main thread
+      return getDisplayParent(displayNumber);
+    } else {
+      // This is branch continuation (like 1.1.1) - parent is previous in branch
+      const prevNum = lastNum - 1;
+      parts[parts.length - 1] = String(prevNum);
+      return parts.join('.');
+    }
+  };
+
   const truncateText = (text, maxLength) => {
     if (!text) return 'Empty';
     return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
@@ -75,6 +146,13 @@ export function GraphView({ conversations, currentConversationId, onConversation
       classes.push('error');
     } else if (conversation.status === 'complete') {
       classes.push('complete');
+    } else if (conversation.status === 'ready') {
+      classes.push('ready');
+    }
+
+    // Add branch type classes
+    if (conversation.branchType) {
+      classes.push(`branch-${conversation.branchType}`);
     }
 
     return classes.join(' ');
@@ -139,6 +217,54 @@ export function GraphView({ conversations, currentConversationId, onConversation
         style: {
           'background-color': '#059669',
           'border-color': '#10b981'
+        }
+      },
+
+      // Ready node (for branches waiting for input)
+      {
+        selector: 'node.ready',
+        style: {
+          'background-color': '#374151',
+          'border-color': '#6b7280',
+          'border-style': 'dashed'
+        }
+      },
+
+      // Branch nodes - different colors by type
+      {
+        selector: 'node.branch-virgin',
+        style: {
+          'background-color': '#7c3aed',
+          'border-color': '#8b5cf6'
+        }
+      },
+
+      {
+        selector: 'node.branch-personality',
+        style: {
+          'background-color': '#2563eb',
+          'border-color': '#3b82f6'
+        }
+      },
+
+      {
+        selector: 'node.branch-knowledge',
+        style: {
+          'background-color': '#059669',
+          'border-color': '#10b981'
+        }
+      },
+
+      // Branch edges - dashed lines
+      {
+        selector: 'edge.branch-edge',
+        style: {
+          'width': 3,
+          'line-color': '#f59e0b',
+          'target-arrow-color': '#f59e0b',
+          'target-arrow-shape': 'triangle',
+          'curve-style': 'bezier',
+          'line-style': 'dashed'
         }
       },
 

@@ -541,3 +541,258 @@ html.dark {
   gap: 8px;
   align-items: center;
 }
+
+/* Conversation Actions */
+.conversation-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.app.dark .conversation-actions {
+  border-top-color: #4a5568;
+}
+
+.action-btn {
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  background: transparent;
+  color: #6b7280;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.app.dark .action-btn {
+  border-color: #4a5568;
+  color: #a0aec0;
+}
+
+.action-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.app.dark .action-btn:hover {
+  background: #4a5568;
+  color: #e2e8f0;
+}
+
+.fork-btn:hover {
+  background: #f59e0b;
+  border-color: #f59e0b;
+  color: white;
+}
+
+.copy-btn:hover {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
+}
+
+/* Fork Menu */
+.fork-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.fork-menu {
+  background: #ffffff;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  min-width: 400px;
+  max-width: 500px;
+  color: #374151;
+}
+
+.app.dark .fork-menu {
+  background: #2d3748;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+.fork-menu h3 {
+  margin: 0 0 20px 0;
+  text-align: center;
+}
+
+.branch-types {
+  margin: 16px 0;
+}
+
+.branch-types label {
+  display: block;
+  margin: 8px 0;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.branch-types label.selected .branch-option {
+  background: #f0f9ff;
+  border-color: #f59e0b;
+}
+
+.app.dark .branch-types label.selected .branch-option {
+  background: #1a202c;
+  border-color: #f59e0b;
+}
+
+.branch-option {
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  transition: all 0.2s;
+}
+
+.app.dark .branch-option {
+  border-color: #4a5568;
+}
+
+.branch-option:hover {
+  border-color: #3b82f6;
+  background: #f8fafc;
+}
+
+.app.dark .branch-option:hover {
+  border-color: #63b3ed;
+  background: #1a202c;
+}
+
+.branch-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.branch-emoji {
+  font-size: 18px;
+}
+
+.branch-option p {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.app.dark .branch-option p {
+  color: #a0aec0;
+}
+
+.fork-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.create-fork-btn {
+  background: #f59e0b;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.create-fork-btn:hover {
+  background: #d97706;
+}
+
+.cancel-btn {
+  background: transparent;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.app.dark .cancel-btn {
+  color: #a0aec0;
+  border-color: #4a5568;
+}
+
+.cancel-btn:hover {
+  background: #f3f4f6;
+}
+
+.app.dark .cancel-btn:hover {
+  background: #4a5568;
+}
+
+/* Hide radio buttons in fork menu */
+.branch-types input[type="radio"] {
+  display: none;
+}
+
+/* Hide duplicate copy button in DaggerOutput to prevent button duplication */
+.dagger-output .copy-button {
+  display: none !important;
+}
+
+/* Hide any accidentally placed buttons in response/content areas */
+.conversation-response .action-btn,
+.conversation-content .action-btn,
+.output-content .action-btn {
+  display: none !important;
+}
+
+/* Branch Context Indicator */
+.branch-context-indicator {
+  background: #1e40af;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.app.dark .branch-context-indicator {
+  background: #1e40af;
+}
+
+.context-label {
+  font-weight: bold;
+}
+
+.context-path {
+  font-family: 'Monaco', 'Menlo', 'Consolas', 'Courier New', monospace;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.return-to-graph-btn {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.return-to-graph-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.5);
+}

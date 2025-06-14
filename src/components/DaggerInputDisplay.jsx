@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 
-export function DaggerInputDisplay({ interaction }) {
+export function DaggerInputDisplay({ interaction, onCopy, onFork, showActions = false }) {
   // Auto-collapse long inputs (more than 3 lines)
   const [isCollapsed, setIsCollapsed] = useState(() => {
     if (!interaction?.content) return false
@@ -29,8 +29,11 @@ export function DaggerInputDisplay({ interaction }) {
   return (
     <div className="input-interaction">
       <div className="interaction-header">
-        <span className="interaction-number">{interaction.displayNumber}&gt;</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div className="conversation-info">
+          <span className="interaction-number">{interaction.displayNumber}&gt;</span>
+          <span className="timestamp">{interaction.timestamp.toLocaleTimeString()}</span>
+        </div>
+        <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {isLongContent && (
             <button 
               onClick={toggleCollapse}
@@ -40,7 +43,25 @@ export function DaggerInputDisplay({ interaction }) {
               {isCollapsed ? '📖 Expand' : '📋 Collapse'}
             </button>
           )}
-          <span className="timestamp">{interaction.timestamp.toLocaleTimeString()}</span>
+          {showActions && (
+            <>
+              <button 
+                className="action-btn copy-btn"
+                onClick={() => onCopy && onCopy(interaction)}
+                title="Copy conversation"
+              >
+                📋 Copy
+              </button>
+              
+              <button 
+                className="action-btn fork-btn"
+                onClick={() => onFork && onFork(interaction.id)}
+                title="Create branch from this conversation"
+              >
+                Fork ➡️
+              </button>
+            </>
+          )}
         </div>
       </div>
       <div 
@@ -56,10 +77,50 @@ export function DaggerInputDisplay({ interaction }) {
 
 // CSS styles for input collapse
 const styles = `
-.input-actions {
+.interaction-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.conversation-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.action-btn {
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  background: transparent;
+  color: #6b7280;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.fork-btn:hover {
+  background: #f59e0b;
+  border-color: #f59e0b;
+  color: white;
+}
+
+.copy-btn:hover {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
 }
 
 .input-collapse {
@@ -100,6 +161,16 @@ const styles = `
 
 .app.dark .input-collapse:hover {
   background: #7c3aed;
+}
+
+.app.dark .action-btn {
+  border-color: #4a5568;
+  color: #a0aec0;
+}
+
+.app.dark .action-btn:hover {
+  background: #4a5568;
+  color: #e2e8f0;
 }
 
 .app.dark .interaction-content.collapsed::after {

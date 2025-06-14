@@ -20,7 +20,6 @@ export class GraphModel {
    */
   addConversation(prompt, response = '', metadata = {}) {
     const id = uuidv4();
-    this.conversationCounter++;
     
     const conversation = {
       id,
@@ -45,6 +44,7 @@ export class GraphModel {
     
     this.conversations.set(id, conversation);
     this.mainThread.push(id);
+    this.conversationCounter++; // Increment after assignment for zero-indexing
     this.saveToStorage();
     
     return conversation;
@@ -199,6 +199,272 @@ export class GraphModel {
       storageSize: stored ? stored.length : 0,
       storageFormatted: stored ? `${(stored.length / 1024).toFixed(1)}KB` : '0KB'
     };
+  }
+
+  /**
+   * Generate hierarchical branch ID following pattern: parent.branch.0
+   */
+  generateBranchId(parentDisplayNumber) {
+    // Count existing branches from this parent
+    const existingBranches = Array.from(this.conversations.values())
+      .filter(conv => {
+        if (!conv.parentDisplayNumber) return false;
+        return conv.parentDisplayNumber === String(parentDisplayNumber);
+      })
+      .length;
+    
+    const branchNumber = existingBranches + 1; // 1, 2, 3...
+    return `${parentDisplayNumber}.${branchNumber}.0`;
+  }
+
+  /**
+   * Generate next ID in branch thread
+   */
+  generateNextInBranch(currentBranchId) {
+    const parts = String(currentBranchId).split('.');
+    const lastIndex = parts.length - 1;
+    const currentNumber = parseInt(parts[lastIndex]);
+    parts[lastIndex] = String(currentNumber + 1);
+    
+    return parts.join('.');
+  }
+
+  /**
+   * Check if ID represents a branch (contains dots)
+   */
+  isBranchId(displayNumber) {
+    return String(displayNumber).includes('.');
+  }
+
+  /**
+   * Get parent ID from hierarchical ID
+   */
+  getParentDisplayNumber(displayNumber) {
+    const str = String(displayNumber);
+    if (!str.includes('.')) return null; // Main thread has no parent
+    
+    const parts = str.split('.');
+    if (parts.length === 3) {
+      // Branch like "2.1.0" → parent is "2"
+      return parts[0];
+    } else {
+      // Sub-branch like "2.1.2.1.0" → parent is "2.1.2"
+      return parts.slice(0, -2).join('.');
+    }
+  }
+
+  /**
+   * Parse hierarchical display number for sorting
+   */
+  parseHierarchicalId(displayNumber) {
+    const str = String(displayNumber);
+    if (!str.includes('.')) {
+      // Main thread: "2" → [2]
+      return [parseInt(str)];
+    }
+    
+    // Branch: "2.1.3" → [2, 1, 3]
+    return str.split('.').map(n => parseInt(n));
+  }
+
+  /**
+   * Create a branch from an existing conversation
+   */
+  createBranch(parentId, branchType, summaryType = 'brief') {
+    const parentConversation = this.conversations.get(parentId);
+    if (!parentConversation) {
+      throw new Error(`Parent conversation ${parentId} not found`);
+    }
+
+    const branchId = uuidv4();
+    
+    // Generate hierarchical display number
+    const parentDisplayNumber = parentConversation.displayNumber;
+    const branchDisplayNumber = this.generateBranchId(parentDisplayNumber);
+    
+    // Create branch conversation
+    const branchConversation = {
+      id: branchId,
+      displayNumber: branchDisplayNumber, // e.g., "2.1.0"
+      prompt: '', // Will be filled when user starts conversation
+      response: '',
+      timestamp: Date.now(),
+      
+      // Branch metadata
+      parentId: parentId,
+      parentDisplayNumber: parentDisplayNumber,
+      branchType: branchType, // 'virgin', 'personality', 'knowledge'
+      depth: this.calculateDepth(parentId) + 1,
+      
+      // Conversation metadata
+      processingTime: 0,
+      tokenCount: 0,
+      model: 'unknown',
+      
+      // Status
+      status: 'ready' // 'ready', 'active', 'processing', 'complete'
+    };
+
+    // Store the branch
+    this.conversations.set(branchId, branchConversation);
+    
+    // Track branch relationship
+    if (!this.branches.has(parentId)) {
+      this.branches.set(parentId, []);
+    }
+    this.branches.get(parentId).push(branchId);
+    
+    this.saveToStorage();
+    
+    console.log(`✅ Created ${branchType} branch ${branchDisplayNumber} from ${parentDisplayNumber}`);
+    
+    return branchConversation;
+  }
+
+  /**
+   * Add conversation to existing branch (for branch continuation)
+   */
+  addConversationToBranch(branchId, prompt, response = '', metadata = {}) {
+    const currentBranch = this.conversations.get(branchId);
+    if (!currentBranch) {
+      throw new Error(`Branch conversation ${branchId} not found`);
+    }
+    
+    // If this is the first conversation in the branch (empty prompt), update it
+    if (!currentBranch.prompt) {
+      return this.updateConversation(branchId, {
+        prompt: prompt,
+        response: response,
+        ...metadata,
+        status: response ? 'complete' : 'processing'
+      });
+    }
+    
+    // Otherwise, create next conversation in branch
+    const newId = uuidv4();
+    const nextDisplayNumber = this.generateNextInBranch(currentBranch.displayNumber);
+    
+    const newConversation = {
+      id: newId,
+      displayNumber: nextDisplayNumber, // e.g., "2.1.1", "2.1.2"
+      prompt: prompt,
+      response: response,
+      timestamp: Date.now(),
+      
+      // Inherit branch properties
+      parentId: currentBranch.parentId,
+      parentDisplayNumber: currentBranch.parentDisplayNumber,
+      branchType: currentBranch.branchType,
+      depth: currentBranch.depth,
+      
+      // Metadata
+      processingTime: metadata.processingTime || 0,
+      tokenCount: metadata.tokenCount || 0,
+      model: metadata.model || 'unknown',
+      status: response ? 'complete' : 'processing'
+    };
+    
+    this.conversations.set(newId, newConversation);
+    this.saveToStorage();
+    
+    return newConversation;
+  }
+
+  /**
+   * Calculate depth in branch hierarchy
+   */
+  calculateDepth(conversationId) {
+    let depth = 0;
+    let current = this.conversations.get(conversationId);
+    
+    while (current && current.parentId) {
+      depth++;
+      current = this.conversations.get(current.parentId);
+    }
+    
+    return depth;
+  }
+
+  /**
+   * Get all conversations including branches for graph display
+   */
+  getAllConversationsWithBranches() {
+    return Array.from(this.conversations.values())
+      .sort((a, b) => {
+        const aParts = this.parseHierarchicalId(a.displayNumber);
+        const bParts = this.parseHierarchicalId(b.displayNumber);
+        
+        // Compare each level
+        const maxLength = Math.max(aParts.length, bParts.length);
+        for (let i = 0; i < maxLength; i++) {
+          const aVal = aParts[i] || 0;
+          const bVal = bParts[i] || 0;
+          
+          if (aVal !== bVal) {
+            return aVal - bVal;
+          }
+        }
+        
+        return 0; // Equal
+      });
+  }
+
+  /**
+   * Get the root conversation of a branch
+   */
+  getBranchRoot(conversationId) {
+    const conversation = this.conversations.get(conversationId);
+    if (!conversation) return null;
+    
+    if (!this.isBranchId(conversation.displayNumber)) {
+      return conversation; // Already at root
+    }
+    
+    // Find the first conversation in this branch thread
+    const displayParts = this.parseHierarchicalId(conversation.displayNumber);
+    displayParts[displayParts.length - 1] = 0; // Set to .0
+    const rootDisplayNumber = displayParts.join('.');
+    
+    // Find conversation with this display number
+    for (const conv of this.conversations.values()) {
+      if (String(conv.displayNumber) === rootDisplayNumber) {
+        return conv;
+      }
+    }
+    
+    return conversation; // Fallback
+  }
+
+  /**
+   * Get all conversations in a branch thread
+   */
+  getBranchThread(displayNumber) {
+    const branchPrefix = this.getBranchPrefix(displayNumber);
+    
+    return Array.from(this.conversations.values())
+      .filter(conv => {
+        const convDisplay = String(conv.displayNumber);
+        return convDisplay.startsWith(branchPrefix);
+      })
+      .sort((a, b) => {
+        const aParts = String(a.displayNumber).split('.');
+        const bParts = String(b.displayNumber).split('.');
+        const aLast = parseInt(aParts[aParts.length - 1]);
+        const bLast = parseInt(bParts[bParts.length - 1]);
+        return aLast - bLast;
+      });
+  }
+
+  /**
+   * Get branch prefix for finding thread conversations
+   */
+  getBranchPrefix(displayNumber) {
+    const parts = String(displayNumber).split('.');
+    if (parts.length >= 3) {
+      // "1.1.2" → "1.1."
+      return parts.slice(0, 2).join('.') + '.';
+    }
+    return displayNumber;
   }
 }
 
