@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { formatISODateTime } from '../models/GraphModel.js'
 
 export function DaggerOutput({ response, displayNumber, isLoading = false }) {
   const [copyStatus, setCopyStatus] = useState('copy')
@@ -14,13 +15,7 @@ export function DaggerOutput({ response, displayNumber, isLoading = false }) {
 
   const formatTimestamp = useCallback((timestamp) => {
     if (!timestamp) return ''
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(new Date(timestamp))
+    return formatISODateTime(timestamp)
   }, [])
 
   const formatProcessingTime = useCallback((ms) => {
@@ -31,6 +26,40 @@ export function DaggerOutput({ response, displayNumber, isLoading = false }) {
   const getWordCount = useCallback((text) => {
     if (!text?.trim()) return 0
     return text.trim().split(/\s+/).length
+  }, [])
+
+  const getModelDisplayName = useCallback((model) => {
+    switch (model) {
+      case 'claude-sonnet-4-20250514': return '🧠 Sonnet 4';
+      case 'claude-opus-4-20250514': return '🚀 Opus 4';
+      case 'claude-3-5-sonnet-20241022': return '⚙️ Sonnet 3.5';
+      case 'claude-3-5-haiku-20241022': return '🍃 Haiku 3.5';
+      case 'claude-3-opus-20240229': return '🎵 Opus 3';
+      default:
+        if (model?.includes('sonnet-4')) return '🧠 Sonnet 4';
+        if (model?.includes('opus-4')) return '🚀 Opus 4';
+        if (model?.includes('sonnet')) return '🎭 Sonnet';
+        if (model?.includes('haiku')) return '🍃 Haiku';
+        if (model?.includes('opus')) return '🎵 Opus';
+        return '🤖 Claude';
+    }
+  }, [])
+
+  const getModelClass = useCallback((model) => {
+    switch (model) {
+      case 'claude-sonnet-4-20250514': return 'sonnet-4';
+      case 'claude-opus-4-20250514': return 'opus-4';
+      case 'claude-3-5-sonnet-20241022': return 'sonnet-3-5';
+      case 'claude-3-5-haiku-20241022': return 'haiku-3-5';
+      case 'claude-3-opus-20240229': return 'opus-3';
+      default:
+        if (model?.includes('sonnet-4')) return 'sonnet-4';
+        if (model?.includes('opus-4')) return 'opus-4';
+        if (model?.includes('sonnet-3-5')) return 'sonnet-3-5';
+        if (model?.includes('haiku-3-5')) return 'haiku-3-5';
+        if (model?.includes('opus-3')) return 'opus-3';
+        return 'default';
+    }
   }, [])
 
   const getPreviewContent = useCallback((content) => {
@@ -146,10 +175,8 @@ export function DaggerOutput({ response, displayNumber, isLoading = false }) {
           <span className="timestamp">{formatTimestamp(response.timestamp)}</span>
           <span className="processing-time">{formatProcessingTime(response.processingTimeMs)}</span>
           {response.model && (
-            <span className="model-tag" title={response.model}>
-              {response.model.includes('sonnet') ? '🎭 Sonnet' : 
-               response.model.includes('haiku') ? '🍃 Haiku' : 
-               response.model.includes('opus') ? '🎵 Opus' : '🤖 Claude'}
+            <span className={`model-tag model-indicator model-${getModelClass(response.model)}`} title={response.model}>
+              {getModelDisplayName(response.model)}
             </span>
           )}
         </div>

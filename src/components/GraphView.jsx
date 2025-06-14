@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import cytoscape from 'cytoscape';
 import dagre from 'cytoscape-dagre';
+import { formatISODateTime } from '../models/GraphModel.js';
 
 // Register dagre layout
 cytoscape.use(dagre);
@@ -130,7 +131,7 @@ export function GraphView({ conversations, currentConversationId, onConversation
   };
 
   const formatTimestamp = (timestamp) => {
-    return new Date(timestamp).toLocaleTimeString();
+    return formatISODateTime(timestamp);
   };
 
   const getNodeClasses = (conversation, currentId) => {

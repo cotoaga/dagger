@@ -1,5 +1,26 @@
 import { v4 as uuidv4 } from 'uuid';
 
+// ISO DateTime formatting utilities
+export function formatISODateTime(timestamp) {
+  const date = new Date(timestamp);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
+}
+
+export function formatISODate(timestamp) {
+  const date = new Date(timestamp);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}`;
+}
+
 /**
  * DAGGER GraphModel v2.0 - Clean Architecture
  * One conversation = One node (prompt + response)
@@ -99,6 +120,26 @@ export class GraphModel {
   }
   
   /**
+   * Get friendly display name for model
+   */
+  getModelDisplayName(model) {
+    switch (model) {
+      case 'claude-sonnet-4-20250514': return '🧠 Claude Sonnet 4';
+      case 'claude-opus-4-20250514': return '🚀 Claude Opus 4';
+      case 'claude-3-5-sonnet-20241022': return '⚙️ Claude 3.5 Sonnet (Legacy)';
+      case 'claude-3-5-haiku-20241022': return '🍃 Claude 3.5 Haiku (Legacy)';
+      case 'claude-3-opus-20240229': return '🎵 Claude 3 Opus (Legacy)';
+      default:
+        if (model?.includes('sonnet-4')) return '🧠 Claude Sonnet 4';
+        if (model?.includes('opus-4')) return '🚀 Claude Opus 4';
+        if (model?.includes('sonnet')) return '🎭 Claude Sonnet';
+        if (model?.includes('haiku')) return '🍃 Claude Haiku';
+        if (model?.includes('opus')) return '🎵 Claude Opus';
+        return model || 'Unknown Model';
+    }
+  }
+
+  /**
    * Export to clean markdown format
    */
   exportToMarkdown() {
@@ -106,13 +147,14 @@ export class GraphModel {
     const conversations = this.getAllConversations();
     
     let markdown = `# DAGGER Conversation Export v2.0\n`;
-    markdown += `**Exported:** ${new Date().toLocaleString()}\n`;
+    markdown += `**Exported:** ${formatISODateTime(Date.now())}\n`;
     markdown += `**Total Conversations:** ${conversations.length}\n\n`;
     
     conversations.forEach((conv, index) => {
       markdown += `## ${conv.displayNumber}. Conversation\n`;
+      markdown += `**Model:** ${this.getModelDisplayName(conv.model)}\n`;
       markdown += `**ID:** \`${conv.id}\`\n`;
-      markdown += `**Timestamp:** ${new Date(conv.timestamp).toLocaleString()}\n\n`;
+      markdown += `**Timestamp:** ${formatISODateTime(conv.timestamp)}\n\n`;
       
       markdown += `**Prompt:**\n${conv.prompt}\n\n`;
       
@@ -123,7 +165,7 @@ export class GraphModel {
       markdown += `**Metadata:**\n`;
       markdown += `- Processing Time: ${conv.processingTime}ms\n`;
       markdown += `- Tokens: ${conv.tokenCount}\n`;
-      markdown += `- Model: ${conv.model}\n`;
+      markdown += `- Model: ${this.getModelDisplayName(conv.model)} (\`${conv.model}\`)\n`;
       markdown += `- Status: ${conv.status}\n\n`;
       
       markdown += `---\n\n`;
@@ -131,10 +173,10 @@ export class GraphModel {
     
     return {
       markdown,
-      filename: `dagger-export-v2-${timestamp}.md`,
+      filename: `dagger-export-${timestamp}.md`,
       rawData: {
         conversations: conversations,
-        exportedAt: timestamp,
+        exportedAt: formatISODateTime(Date.now()),
         version: '2.0'
       }
     };

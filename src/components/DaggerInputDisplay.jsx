@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { formatISODateTime } from '../models/GraphModel.js'
 
 export function DaggerInputDisplay({ interaction, onCopy, onFork, showActions = false }) {
   // Auto-collapse long inputs (more than 3 lines)
@@ -31,7 +32,7 @@ export function DaggerInputDisplay({ interaction, onCopy, onFork, showActions = 
       <div className="interaction-header">
         <div className="conversation-info">
           <span className="interaction-number">{interaction.displayNumber}&gt;</span>
-          <span className="timestamp">{interaction.timestamp.toLocaleTimeString()}</span>
+          <span className="timestamp">{formatISODateTime(interaction.timestamp)}</span>
         </div>
         <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {isLongContent && (

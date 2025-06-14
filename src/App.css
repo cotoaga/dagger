@@ -796,3 +796,59 @@ html.dark {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.5);
 }
+
+/* Model Performance Indicators */
+.model-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.model-sonnet-4 {
+  background: #10b981;
+  color: white;
+}
+
+.model-opus-4 {
+  background: #f59e0b;
+  color: white;
+}
+
+.model-sonnet-3-5 {
+  background: #6b7280;
+  color: white;
+}
+
+.model-haiku-3-5 {
+  background: #06b6d4;
+  color: white;
+}
+
+.model-opus-3 {
+  background: #8b5cf6;
+  color: white;
+}
+
+/* Enhanced model tags in conversation metadata */
+.model-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+}
+
+.app.dark .model-tag {
+  background: #374151;
+  color: #e5e7eb;
+  border-color: #4b5563;
+}

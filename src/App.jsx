@@ -22,8 +22,9 @@ function App() {
   })
   const [apiTestStatus, setApiTestStatus] = useState('')
   const [selectedModel, setSelectedModel] = useState(() => {
-    return localStorage.getItem('dagger-model') || 'claude-3-5-sonnet-20241022'
+    return localStorage.getItem('dagger-model') || 'claude-sonnet-4-20250514'
   })
+  const [extendedThinking, setExtendedThinking] = useState(false)
   const [currentView, setCurrentView] = useState('linear') // 'linear' | 'graph'
   const [selectedNodeId, setSelectedNodeId] = useState(null)
   const [showForkMenu, setShowForkMenu] = useState(false)
@@ -40,7 +41,8 @@ function App() {
     const savedApiKey = localStorage.getItem('claude-api-key')
     if (savedApiKey && ClaudeAPI.validateApiKey(savedApiKey)) {
       setApiKey(savedApiKey)
-      setClaudeAPI(new ClaudeAPI(savedApiKey))
+      ClaudeAPI.setApiKey(savedApiKey)
+      setClaudeAPI(ClaudeAPI)
     }
   }, [])
 
@@ -52,14 +54,14 @@ function App() {
     }
 
     setApiTestStatus('🧪 Testing API key...')
-    const testAPI = new ClaudeAPI(key, selectedModel)
+    ClaudeAPI.setApiKey(key)
+    ClaudeAPI.setModel(selectedModel)
     
     try {
-      const result = await testAPI.testApiKey()
+      const result = await ClaudeAPI.testApiKey()
       if (result.success) {
         setApiKey(key)
-        setClaudeAPI(testAPI)
-        localStorage.setItem('claude-api-key', key)
+        setClaudeAPI(ClaudeAPI)
         setApiTestStatus('✅ API key working!')
       } else {
         setApiTestStatus(`❌ ${result.message}`)
@@ -67,7 +69,7 @@ function App() {
     } catch (error) {
       setApiTestStatus(`❌ Test failed: ${error.message}`)
     }
-  }, [])
+  }, [selectedModel])
 
   const toggleDarkMode = useCallback(() => {
     const newMode = !darkMode
@@ -95,9 +97,23 @@ function App() {
     setSelectedModel(model)
     localStorage.setItem('dagger-model', model)
     
-    // Update existing API instance if connected
+    // Update API singleton if connected
     if (claudeAPI) {
-      claudeAPI.setModel(model)
+      ClaudeAPI.setModel(model)
+      ClaudeAPI.setExtendedThinking(extendedThinking)
+    }
+
+    // Reset extended thinking if model doesn't support it
+    if (!ClaudeAPI.MODELS[model]?.supportsExtendedThinking) {
+      setExtendedThinking(false)
+    }
+  }, [claudeAPI, extendedThinking])
+
+  // Handle extended thinking toggle
+  const handleExtendedThinkingChange = useCallback((enabled) => {
+    setExtendedThinking(enabled)
+    if (claudeAPI) {
+      ClaudeAPI.setExtendedThinking(enabled)
     }
   }, [claudeAPI])
 
@@ -135,43 +151,66 @@ function App() {
     setIsProcessing(true);
     
     let newConversation;
+    let threadId = 'main';
     
     if (currentBranchContext) {
-      // Add to current branch
+      // Add to current branch thread
+      threadId = `branch-${currentBranchContext}`;
       newConversation = graphModel.addConversationToBranch(
         currentConversationId, 
         prompt, 
         '', 
-        { status: 'processing' }
+        { 
+          status: 'processing',
+          threadId: threadId
+        }
       );
     } else {
       // Add to main thread
-      newConversation = graphModel.addConversation(prompt, '', {
-        status: 'processing'
-      });
+      newConversation = graphModel.addConversation(
+        prompt, 
+        '', 
+        { 
+          status: 'processing',
+          threadId: 'main'
+        }
+      );
     }
     
-    // Update UI immediately
-    setConversations(currentBranchContext ? graphModel.getAllConversationsWithBranches() : graphModel.getAllConversations());
+    setConversations(graphModel.getAllConversationsWithBranches());
     setCurrentConversationId(newConversation.id);
     
     try {
-      // Call Claude API
-      const startTime = Date.now();
-      const response = await claudeAPI.sendMessage(prompt);
-      const processingTime = Date.now() - startTime;
+      // Determine which model to use based on branch context
+      let modelToUse = claudeAPI.model;
+      
+      if (currentBranchContext) {
+        // Check if current branch has a preferred model
+        const currentBranch = graphModel.getConversation(currentConversationId);
+        if (currentBranch && currentBranch.preferredModel) {
+          modelToUse = currentBranch.preferredModel;
+        }
+      }
+      
+      // Call API with thread context
+      const response = await claudeAPI.generateResponse(prompt, {
+        threadId: threadId,
+        model: modelToUse
+      });
       
       // Update with response
       graphModel.updateConversation(newConversation.id, {
         response: response.content,
-        processingTime: processingTime,
+        processingTime: response.processingTime,
         tokenCount: response.totalTokens,
-        model: claudeAPI.model,
+        model: response.model,
         status: 'complete'
       });
       
-      // Refresh UI
-      setConversations(graphModel.getAllConversations());
+      setConversations(graphModel.getAllConversationsWithBranches());
+      
+      console.log(`✅ Conversation added to thread: ${threadId}`);
+      console.log(`🧵 Thread info:`, claudeAPI.getThreadInfo(threadId));
       
     } catch (error) {
       console.error('❌ API Error:', error);
@@ -181,11 +220,11 @@ function App() {
         status: 'error'
       });
       
-      setConversations(graphModel.getAllConversations());
+      setConversations(graphModel.getAllConversationsWithBranches());
     } finally {
       setIsProcessing(false);
     }
-  }, [claudeAPI, isProcessing, currentBranchContext, currentConversationId])
+  }, [claudeAPI, isProcessing, currentBranchContext, currentConversationId, extendedThinking, selectedModel])
 
   // Get conversations to display based on current context
   const getDisplayConversations = useCallback(() => {
@@ -283,20 +322,42 @@ function App() {
   // Add fork creation handler (real implementation)
   const handleCreateFork = useCallback(async (sourceId, branchType) => {
     try {
-      console.log(`🍴 Creating ${branchType} branch from conversation ${sourceId}`);
+      // Determine model based on branch type
+      let branchModel;
       
-      // Create actual branch in GraphModel
-      const newBranch = graphModel.createBranch(sourceId, branchType);
-      
-      // Update both conversation lists
-      setConversations(graphModel.getAllConversations()); // For linear view
-      
-      // If in graph view, we need to include branches
-      if (currentView === 'graph') {
-        setConversations(graphModel.getAllConversationsWithBranches());
+      switch (branchType) {
+        case 'virgin':
+          branchModel = 'claude-sonnet-4-20250514'; // Fresh conversations
+          break;
+        case 'personality':
+          branchModel = 'claude-sonnet-4-20250514'; // Personality + efficiency
+          break;
+        case 'knowledge':
+          branchModel = 'claude-opus-4-20250514';   // Complex context processing
+          break;
+        default:
+          branchModel = selectedModel;
       }
       
-      console.log(`✅ Created branch ${newBranch.displayNumber} (${branchType})`);
+      console.log(`🍴 Creating ${branchType} branch from conversation ${sourceId} with ${ClaudeAPI.MODELS[branchModel]?.name || branchModel}`);
+      
+      // Create branch in data model
+      const newBranch = graphModel.createBranch(sourceId, branchType);
+      
+      // Create dedicated thread for this branch
+      const branchThreadId = claudeAPI.createBranchThread(newBranch.id);
+      
+      // Set branch-specific model preference and thread ID
+      newBranch.preferredModel = branchModel;
+      graphModel.updateConversation(newBranch.id, {
+        threadId: branchThreadId
+      });
+      
+      setConversations(graphModel.getAllConversationsWithBranches());
+      setCurrentConversationId(newBranch.id);
+      setCurrentBranchContext(newBranch.displayNumber.split('.').slice(0, 2).join('.'));
+      
+      console.log(`✅ Created branch with thread: ${branchThreadId}`);
       
       // Close modal
       setShowForkMenu(false);
@@ -309,7 +370,7 @@ function App() {
       console.error('❌ Fork creation failed:', error);
       alert(`Failed to create fork: ${error.message}`);
     }
-  }, [currentView])
+  }, [currentView, selectedModel])
 
   // Add copy conversation handler
   const copyConversation = useCallback((conversation) => {
@@ -461,6 +522,26 @@ function App() {
             ))}
           </select>
           
+          {ClaudeAPI.MODELS[selectedModel]?.supportsExtendedThinking && (
+            <label className="extended-thinking-toggle" style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '13px',
+              color: darkMode ? '#e5e7eb' : '#374151',
+              cursor: 'pointer',
+              marginLeft: '12px'
+            }}>
+              <input 
+                type="checkbox" 
+                checked={extendedThinking}
+                onChange={e => handleExtendedThinkingChange(e.target.checked)}
+                style={{ cursor: 'pointer' }}
+              />
+              🧠 Extended Thinking
+            </label>
+          )}
+          
           <button onClick={toggleDarkMode} className="theme-toggle">
             {darkMode ? '☀️ Light' : '🌙 Dark'}
           </button>
@@ -502,6 +583,7 @@ function App() {
           <button 
             onClick={() => {
               localStorage.removeItem('claude-api-key')
+              ClaudeAPI.setApiKey('')
               setApiKey('')
               setClaudeAPI(null)
               setApiTestStatus('')
@@ -615,6 +697,47 @@ function App() {
             setForkSourceId(null);
           }}
         />
+      )}
+
+      {/* Thread Debugging Panel (development only) */}
+      {import.meta.env.DEV && claudeAPI && (
+        <div className="thread-debug" style={{
+          position: 'fixed', 
+          bottom: '10px', 
+          right: '10px', 
+          background: '#2d3748', 
+          padding: '10px', 
+          borderRadius: '6px',
+          fontSize: '12px',
+          color: '#e2e8f0',
+          maxWidth: '300px',
+          border: '1px solid #4a5568'
+        }}>
+          <strong>🧵 Active Threads:</strong>
+          {claudeAPI.getAllThreads().map(thread => (
+            <div key={thread.threadId} style={{ 
+              marginTop: '4px',
+              padding: '4px',
+              background: '#374151',
+              borderRadius: '3px'
+            }}>
+              <div style={{ fontWeight: 'bold' }}>{thread.threadId}</div>
+              <div style={{ color: '#9ca3af' }}>{thread.messageCount} messages</div>
+              <div style={{ 
+                color: '#d1d5db',
+                fontSize: '10px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>
+                {thread.lastMessage}
+              </div>
+            </div>
+          ))}
+          {claudeAPI.getAllThreads().length === 0 && (
+            <div style={{ color: '#9ca3af', marginTop: '4px' }}>No active threads</div>
+          )}
+        </div>
       )}
     </div>
   )
