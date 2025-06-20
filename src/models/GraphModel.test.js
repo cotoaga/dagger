@@ -6,6 +6,7 @@ describe('DAGGER Conversational Numbering', () => {
 
   beforeEach(() => {
     graph = new GraphModel()
+    graph.clearAll() // Ensure clean state for each test
   })
 
   test('user starts conversation with prompt 1>', () => {

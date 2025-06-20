@@ -45,8 +45,9 @@ describe('DaggerOutput', () => {
   test('should display timestamp', () => {
     render(<DaggerOutput response={mockResponse} displayNumber="1" />)
     
-    // Should display formatted timestamp (may include time)
-    expect(screen.getByText(/Jan 1, 2024/)).toBeInTheDocument()
+    // Should display ISO formatted timestamp (YYYY-MM-DD HH:MM format)
+    // Note: formatISODateTime uses local time, test data is UTC, so expect 11:00 (UTC+1)
+    expect(screen.getByText(/2024-01-01 11:00/)).toBeInTheDocument()
   })
 
   test('should copy content to clipboard when copy button clicked', async () => {

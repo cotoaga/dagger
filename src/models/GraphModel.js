@@ -121,6 +121,16 @@ export class GraphModel {
     this.mainThread = [];
     this.branches.clear();
     this.conversationCounter = 0;
+    
+    // Clear merge state
+    this.mergedBranches.clear();
+    this.mergeHistory.clear();
+    
+    // Clear localStorage completely for clean test state
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('dagger-graph-data');
+    }
+    
     this.saveToStorage();
   }
   
@@ -777,6 +787,152 @@ export class GraphModel {
     }
     
     return Array.from(threadGroups.values());
+  }
+
+  // ========================================
+  // CONVERSATIONAL API LAYER
+  // Clean interface for prompt/response flows
+  // ========================================
+
+  /**
+   * Add a user prompt node (1>, 2>, 3>, etc.)
+   * Returns: { id: '1>', type: 'user_prompt', content, timestamp }
+   */
+  addPromptNode(content) {
+    // Create conversation with prompt but no response yet
+    const conversation = this.addConversation(content, '');
+    
+    // Use the actual display number that was assigned (1-indexed for UI)
+    const displayId = `${conversation.displayNumber + 1}>`;
+    
+    return {
+      id: displayId,
+      type: 'user_prompt',
+      content: content,
+      timestamp: new Date(),
+      _internalId: conversation.id // For internal tracking
+    };
+  }
+
+  /**
+   * Add the next prompt in main thread (auto-increment)
+   * Returns: { id: '2>', type: 'user_prompt', content, timestamp }
+   */
+  addNextPrompt(content) {
+    return this.addPromptNode(content);
+  }
+
+  /**
+   * Add AI response to a prompt (>1, >2, >2.1, etc.)
+   * Returns: { id: '>1', type: 'ai_response', content, timestamp }
+   */
+  addResponseToPrompt(promptId, content) {
+    // Extract number from promptId (e.g., '2>' -> '2', '2.1>' -> '2.1')
+    const promptNumber = promptId.replace('>', '');
+    const responseId = `>${promptNumber}`;
+    
+    // Convert 1-indexed prompt number to 0-indexed display number for lookup
+    let displayNumberForLookup;
+    if (promptNumber.includes('.')) {
+      // Branch: '2.1' -> convert first part: (2-1).1 = '1.1'
+      const parts = promptNumber.split('.');
+      const mainPart = parseInt(parts[0]) - 1;
+      displayNumberForLookup = `${mainPart}.${parts[1]}`;
+    } else {
+      // Main thread: '2' -> '1' (2-1)
+      displayNumberForLookup = String(parseInt(promptNumber) - 1);
+    }
+    
+    // Find the conversation by adjusted display number
+    const conversation = this.getConversationByDisplayNumber(displayNumberForLookup);
+    if (!conversation) {
+      throw new Error(`Prompt ${promptId} not found (looked for display number ${displayNumberForLookup})`);
+    }
+    
+    // Update conversation with response
+    this.updateConversation(conversation.id, { response: content });
+    
+    return {
+      id: responseId,
+      type: 'ai_response',
+      content: content,
+      timestamp: new Date(),
+      _internalId: conversation.id
+    };
+  }
+
+  /**
+   * Create a branch from a prompt (2> -> 2.1>, 2.2>, etc.)
+   * Returns: { id: '2.1>', type: 'user_prompt', content, timestamp, isBranch: true }
+   */
+  addBranchFromPrompt(promptId, content) {
+    // Extract base number from promptId (e.g., '2>' -> '2')
+    const baseNumber = promptId.replace('>', '');
+    
+    // Convert 1-indexed prompt number to 0-indexed display number for parent lookup
+    const parentDisplayNumber = String(parseInt(baseNumber) - 1);
+    
+    // Find existing branches for this base (use original baseNumber for branch counting)
+    const existingBranches = this.getAllBranchesForBase(baseNumber);
+    const branchNumber = existingBranches.length + 1;
+    const branchId = `${baseNumber}.${branchNumber}>`;
+    
+    // Find parent conversation using adjusted display number
+    const parentConversation = this.getConversationByDisplayNumber(parentDisplayNumber);
+    if (!parentConversation) {
+      throw new Error(`Parent prompt ${promptId} not found (looked for display number ${parentDisplayNumber})`);
+    }
+    
+    // Create branch conversation using existing createBranch method
+    const branchConversation = this.createBranch(parentConversation.id, 'exploration');
+    this.updateConversation(branchConversation.id, { prompt: content });
+    
+    return {
+      id: branchId,
+      type: 'user_prompt',
+      content: content,
+      timestamp: new Date(),
+      isBranch: true,
+      _internalId: branchConversation.id
+    };
+  }
+
+  /**
+   * Helper: Get all existing branches for a base number
+   */
+  getAllBranchesForBase(baseNumber) {
+    const branches = [];
+    for (const [id, conversation] of this.conversations) {
+      const displayNum = String(conversation.displayNumber);
+      if (displayNum.startsWith(`${baseNumber}.`) && displayNum.includes('.')) {
+        branches.push(conversation);
+      }
+    }
+    return branches;
+  }
+
+  /**
+   * Helper: Get conversation by display number (as string)
+   * Handles both main thread ('2') and branch ('2.1') formats
+   */
+  getConversationByDisplayNumber(displayNumber) {
+    // Convert string to proper numeric format
+    const numericDisplay = parseFloat(displayNumber);
+    
+    // First try exact numeric match
+    const conversation = this.getConversationByNumber(numericDisplay);
+    if (conversation) return conversation;
+    
+    // If not found, search through all conversations manually
+    // This handles edge cases where display numbers don't match exactly
+    for (const [id, conv] of this.conversations) {
+      if (String(conv.displayNumber) === String(displayNumber) || 
+          parseFloat(conv.displayNumber) === numericDisplay) {
+        return conv;
+      }
+    }
+    
+    return null;
   }
 }
 

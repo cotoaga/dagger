@@ -72,6 +72,7 @@ describe('DaggerInput', () => {
     
     expect(mockOnSubmit).toHaveBeenCalledWith({
       content: 'Test content',
+      temperature: 0.7,
       timestamp: expect.any(Date),
       displayNumber: '1',
       charCount: 12,
@@ -94,6 +95,7 @@ describe('DaggerInput', () => {
     
     expect(mockOnSubmit).toHaveBeenCalledWith({
       content: 'Test content',
+      temperature: 0.7,
       timestamp: expect.any(Date),
       displayNumber: '1',
       charCount: 12,
