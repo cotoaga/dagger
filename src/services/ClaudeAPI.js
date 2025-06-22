@@ -1,3 +1,5 @@
+import ConfigService from './ConfigService.js';
+
 class ClaudeAPIClass {
   constructor() {
     this.apiKey = localStorage.getItem('claude-api-key');
@@ -55,9 +57,33 @@ class ClaudeAPIClass {
     localStorage.setItem('claude-api-key', apiKey);
   }
 
-  getApiKey() {
-    return this.apiKey || localStorage.getItem('claude-api-key');
+  // New method to get API key from multiple sources
+  async getApiKey() {
+    try {
+      // First check if we have auto-detected API key from backend
+      const config = await ConfigService.checkBackendConfig();
+      
+      if (config.success && config.hasApiKey) {
+        console.log('🔑 Using auto-detected API key from backend');
+        // Return a special marker indicating backend has the key
+        return 'BACKEND_CONFIGURED';
+      }
+      
+      // Fallback to manual API key if auto-detection failed
+      const manualKey = localStorage.getItem('claude-api-key') || this.apiKey;
+      
+      if (!manualKey || manualKey.trim() === '') {
+        throw new Error('No API key available - neither auto-detected nor manually configured');
+      }
+      
+      console.log('🔑 Using manually configured API key');
+      return manualKey;
+    } catch (error) {
+      console.error('❌ API key retrieval failed:', error);
+      throw new Error('API key configuration error: ' + error.message);
+    }
   }
+
 
   // Check proxy server health
   async checkProxyHealth() {
@@ -86,6 +112,9 @@ class ClaudeAPIClass {
     console.log('🤖 Model:', model);
     console.log('🌡️ Temperature:', temperature);
     
+    // Get API key using integrated method
+    const apiKey = await this.getApiKey();
+    
     // Get or create conversation thread
     let messageHistory = this.conversationThreads.get(threadId) || [];
     console.log('📚 Existing message history length:', messageHistory.length);
@@ -111,9 +140,14 @@ class ClaudeAPIClass {
     // Build headers with extended thinking support
     const headers = {
       'Content-Type': 'application/json',
-      'x-api-key': this.apiKey,
       'anthropic-version': '2023-06-01'
     };
+    
+    // Only add x-api-key header if we have a manual key
+    // Backend-configured keys are handled by the proxy
+    if (apiKey !== 'BACKEND_CONFIGURED') {
+      headers['x-api-key'] = apiKey;
+    }
 
     // Add extended thinking header for Sonnet 4/Opus 4
     if (this.extendedThinking && ClaudeAPIClass.MODELS[model]?.supportsExtendedThinking) {
@@ -122,11 +156,18 @@ class ClaudeAPIClass {
     }
     
     console.log(`🧠 API call with ${messageHistory.length} messages in thread: ${threadId}`);
-    console.log('📡 Making request to:', this.baseURL);
+    console.log('🔑 Using API key type:', apiKey === 'BACKEND_CONFIGURED' ? 'Backend Auto-Detected' : 'Manual');
+    
+    // Determine endpoint based on key type
+    const endpoint = apiKey === 'BACKEND_CONFIGURED' 
+      ? 'http://localhost:3001/api/chat'  // Use proxy for backend keys
+      : this.baseURL;  // Use default endpoint for manual keys
+      
+    console.log('📡 Making request to:', endpoint);
     console.log('📋 Request headers:', JSON.stringify(headers, null, 2));
     
     try {
-      const response = await fetch(this.baseURL, {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers,
         body: JSON.stringify(requestBody)
@@ -358,7 +399,10 @@ class ClaudeAPIClass {
   }
 }
 
-// Export singleton and class for compatibility
-export const ClaudeAPI = new ClaudeAPIClass();
-ClaudeAPI.MODELS = ClaudeAPIClass.MODELS;
-ClaudeAPI.validateApiKey = ClaudeAPIClass.validateApiKey;
+// Export both class and singleton for compatibility
+export { ClaudeAPIClass as ClaudeAPI }; // For tests that need new ClaudeAPI()
+export const claudeAPI = new ClaudeAPIClass(); // For app that needs singleton
+
+// Attach static methods to singleton for backwards compatibility
+claudeAPI.MODELS = ClaudeAPIClass.MODELS;
+claudeAPI.validateApiKey = ClaudeAPIClass.validateApiKey;

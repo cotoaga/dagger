@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { DaggerInput } from './components/DaggerInput.jsx'
 import { DaggerOutput } from './components/DaggerOutput.jsx'
 import { DaggerInputDisplay } from './components/DaggerInputDisplay.jsx'
@@ -6,8 +6,13 @@ import { GraphView } from './components/GraphView.jsx'
 import { ViewToggle } from './components/ViewToggle.jsx'
 import { ForkMenu } from './components/ForkMenu.jsx'
 import ActiveThreads from './components/ActiveThreads.jsx'
+import PromptsTab from './components/PromptsTab.jsx'
+import WelcomeScreen from './components/WelcomeScreen.jsx'
 import { graphModel } from './models/GraphModel.js'
-import { ClaudeAPI } from './services/ClaudeAPI.js'
+import { claudeAPI as ClaudeAPI } from './services/ClaudeAPI.js'
+import { useVisibleConversation } from './hooks/useVisibleConversation.js'
+import PromptsModel from './models/PromptsModel.js'
+import ConfigService from './services/ConfigService.js'
 import './App.css'
 
 function App() {
@@ -15,7 +20,6 @@ function App() {
   const [currentConversationId, setCurrentConversationId] = useState(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [apiKey, setApiKey] = useState('')
-  const [claudeAPI, setClaudeAPI] = useState(null)
   const [darkMode, setDarkMode] = useState(() => {
     // Default to dark mode, or load from localStorage
     const saved = localStorage.getItem('dagger-dark-mode')
@@ -26,29 +30,73 @@ function App() {
     return localStorage.getItem('dagger-model') || 'claude-sonnet-4-20250514'
   })
   const [extendedThinking, setExtendedThinking] = useState(false)
-  const [currentView, setCurrentView] = useState('linear') // 'linear' | 'graph'
+  const [currentView, setCurrentView] = useState('linear') // 'linear' | 'graph' | 'prompts'
   const [selectedNodeId, setSelectedNodeId] = useState(null)
   const [showForkMenu, setShowForkMenu] = useState(false)
   const [forkSourceId, setForkSourceId] = useState(null)
   const [currentBranchContext, setCurrentBranchContext] = useState(null)
+  const conversationRefs = useRef({})
+  
+  // Add scroll source tracking to prevent infinite loops
+  const [scrollSource, setScrollSource] = useState('user') // 'user' | 'programmatic'
+  const [isAutoScrolling, setIsAutoScrolling] = useState(false)
+  const [loopDetection, setLoopDetection] = useState({
+    lastSelections: [],
+    loopCount: 0
+  })
+  
+  // Welcome screen state
+  const [showWelcomeScreen, setShowWelcomeScreen] = useState(() => {
+    return graphModel.getAllConversations().length === 0
+  })
+  const [selectedPersonality, setSelectedPersonality] = useState(null)
+  const [promptsModel] = useState(() => new PromptsModel())
+  
+  // API configuration state (simplified)
+  const [apiKeyConfigured, setApiKeyConfigured] = useState(false)
+  const [configurationLoading, setConfigurationLoading] = useState(true)
+  const [backendError, setBackendError] = useState(null)
 
-  // Load conversations on mount
-  useEffect(() => {
-    const loadedConversations = graphModel.getAllConversations();
-    setConversations(loadedConversations);
-    console.log('📊 Storage stats:', graphModel.getStorageStats());
+  // Auto-detect API key configuration on startup
+  const checkApiKeyConfiguration = useCallback(async () => {
+    setConfigurationLoading(true);
+    setBackendError(null);
     
-    // Clean up any ghost branches on startup
-    graphModel.cleanupEmptyThreads();
-    
-    // Try to load API key from localStorage
-    const savedApiKey = localStorage.getItem('claude-api-key')
-    if (savedApiKey && ClaudeAPI.validateApiKey(savedApiKey)) {
-      setApiKey(savedApiKey)
-      ClaudeAPI.setApiKey(savedApiKey)
-      setClaudeAPI(ClaudeAPI)
+    try {
+      const config = await ConfigService.checkBackendConfig();
+      setApiKeyConfigured(config.hasApiKey);
+      
+      if (config.hasApiKey) {
+        console.log('✅ API key auto-detected from backend');
+      }
+    } catch (error) {
+      console.error('❌ Backend configuration check failed:', error);
+      setBackendError(error.message);
+      setApiKeyConfigured(false);
+    } finally {
+      setConfigurationLoading(false);
     }
-  }, [])
+  }, []);
+  
+  useEffect(() => {
+    checkApiKeyConfiguration();
+  }, [checkApiKeyConfiguration]);
+  
+  // Load conversations on mount (after API check)
+  useEffect(() => {
+    if (apiKeyConfigured) {
+      const loadedConversations = graphModel.getAllConversations();
+      setConversations(loadedConversations);
+      console.log('📊 Storage stats:', graphModel.getStorageStats());
+      
+      // Clean up any ghost branches on startup
+      graphModel.cleanupEmptyThreads();
+      
+      // Check if we should show welcome screen (Node 0 state)
+      const isNodeZero = loadedConversations.length === 0;
+      setShowWelcomeScreen(isNodeZero);
+    }
+  }, [apiKeyConfigured])
 
 
   const handleApiKeySubmit = useCallback(async (key) => {
@@ -65,7 +113,6 @@ function App() {
       const result = await ClaudeAPI.testApiKey()
       if (result.success) {
         setApiKey(key)
-        setClaudeAPI(ClaudeAPI)
         setApiTestStatus('✅ API key working!')
       } else {
         setApiTestStatus(`❌ ${result.message}`)
@@ -97,12 +144,91 @@ function App() {
     }
   }, [darkMode])
 
+  // Auto-scroll to selected conversation in linear view (only for programmatic selection)
+  useEffect(() => {
+    if (selectedNodeId && currentView === 'linear' && scrollSource === 'programmatic' && conversationRefs.current[selectedNodeId]) {
+      console.log('📍 Auto-scrolling to conversation:', selectedNodeId);
+      
+      // Set auto-scrolling flag
+      setIsAutoScrolling(true);
+      
+      // Add a small delay to ensure DOM is updated
+      setTimeout(() => {
+        const element = conversationRefs.current[selectedNodeId];
+        if (element) {
+          element.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          });
+          console.log(`📍 Auto-scrolled to conversation ${selectedNodeId}`);
+        }
+      }, 100);
+      
+      // Clear flags after scroll animation completes
+      setTimeout(() => {
+        setScrollSource('user');
+        setIsAutoScrolling(false);
+        console.log('✅ Auto-scroll completed, re-enabling user scroll detection');
+      }, 1500);
+    }
+  }, [selectedNodeId, currentView, scrollSource]);
+
+  // Handle scroll-based selection detection (Linear → Graph sync) with loop prevention
+  const handleVisibleConversationChange = useCallback((conversationId) => {
+    // Circuit breaker - detect rapid ping-ponging
+    const newSelections = [...loopDetection.lastSelections, conversationId].slice(-10);
+    const uniqueSelections = new Set(newSelections);
+    
+    // If we're rapidly switching between only 2 conversations, STOP
+    if (newSelections.length >= 6 && uniqueSelections.size <= 2) {
+      console.warn('🚨 LOOP DETECTED - Disabling auto-selection temporarily');
+      setIsAutoScrolling(true); // Disable observer
+      
+      // Re-enable after cool-down period
+      setTimeout(() => {
+        setIsAutoScrolling(false);
+        setLoopDetection({ lastSelections: [], loopCount: 0 });
+        console.log('✅ Loop protection reset - Re-enabling scroll detection');
+      }, 3000);
+      
+      return;
+    }
+    
+    setLoopDetection({ lastSelections: newSelections, loopCount: 0 });
+    
+    // Only process if user is actually scrolling (not programmatic) and we're in linear view
+    if (scrollSource === 'user' && !isAutoScrolling && conversationId !== selectedNodeId && currentView === 'linear') {
+      console.log('🔄 Auto-selected conversation from scroll:', conversationId);
+      setSelectedNodeId(conversationId);
+    }
+  }, [selectedNodeId, currentView, scrollSource, isAutoScrolling, loopDetection]);
+
+  // Get conversations to display based on current context
+  const getDisplayConversations = useCallback(() => {
+    if (currentBranchContext) {
+      // Show all conversations in this branch thread
+      const branchThread = graphModel.getBranchThread(currentBranchContext + '.0');
+      console.log(`📋 Displaying branch thread:`, branchThread.map(c => c.displayNumber));
+      return branchThread;
+    } else {
+      // Show main thread only
+      return graphModel.getAllConversations(); // Main thread conversations
+    }
+  }, [currentBranchContext])
+
+  // Use intersection observer to detect visible conversations with auto-scroll awareness
+  useVisibleConversation(
+    getDisplayConversations(), 
+    handleVisibleConversationChange, 
+    currentView === 'linear' && !isAutoScrolling // Only enable in linear view when not auto-scrolling
+  );
+
   const handleModelChange = useCallback((model) => {
     setSelectedModel(model)
     localStorage.setItem('dagger-model', model)
     
     // Update API singleton if connected
-    if (claudeAPI) {
+    if (apiKey) {
       ClaudeAPI.setModel(model)
       ClaudeAPI.setExtendedThinking(extendedThinking)
     }
@@ -111,15 +237,15 @@ function App() {
     if (!ClaudeAPI.MODELS[model]?.supportsExtendedThinking) {
       setExtendedThinking(false)
     }
-  }, [claudeAPI, extendedThinking])
+  }, [apiKey, extendedThinking])
 
   // Handle extended thinking toggle
   const handleExtendedThinkingChange = useCallback((enabled) => {
     setExtendedThinking(enabled)
-    if (claudeAPI) {
+    if (apiKey) {
       ClaudeAPI.setExtendedThinking(enabled)
     }
-  }, [claudeAPI])
+  }, [apiKey])
 
   const handleViewChange = useCallback((view) => {
     setCurrentView(view)
@@ -127,28 +253,23 @@ function App() {
   }, [])
 
   const handleNodeSelect = useCallback((nodeId, nodeData) => {
-    setSelectedNodeId(nodeId)
+    console.log('🎯 Graph node selected:', nodeId);
+    
+    // Set flags to prevent feedback loop
+    setScrollSource('programmatic');
+    setSelectedNodeId(nodeId);
     
     // If switching to linear view from graph, scroll to the selected conversation
     if (currentView === 'graph') {
-      setCurrentView('linear')
-      localStorage.setItem('dagger-view', 'linear')
-      
-      // Find the conversation in the DOM and scroll to it
-      setTimeout(() => {
-        const element = document.querySelector(`[data-node-id="${nodeId}"]`)
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        }
-      }, 100)
+      setCurrentView('linear');
+      localStorage.setItem('dagger-view', 'linear');
     }
   }, [currentView])
 
   // CLEAN conversation handler
   const handleNewConversation = useCallback(async (inputData) => {
     const prompt = inputData.content;
-    if (!prompt.trim() || isProcessing || !claudeAPI) {
-      if (!claudeAPI) alert('Please enter your Claude API key first.');
+    if (!prompt.trim() || isProcessing) {
       return;
     }
     
@@ -186,7 +307,7 @@ function App() {
     
     try {
       // Determine which model to use based on branch context
-      let modelToUse = claudeAPI.model;
+      let modelToUse = ClaudeAPI.model;
       
       if (currentBranchContext) {
         // Check if current branch has a preferred model
@@ -197,7 +318,7 @@ function App() {
       }
       
       // Call API with thread context
-      const response = await claudeAPI.generateResponse(prompt, {
+      const response = await ClaudeAPI.generateResponse(prompt, {
         threadId: threadId,
         model: modelToUse
       });
@@ -214,7 +335,7 @@ function App() {
       setConversations(graphModel.getAllConversationsWithBranches());
       
       console.log(`✅ Conversation added to thread: ${threadId}`);
-      console.log(`🧵 Thread info:`, claudeAPI.getThreadInfo(threadId));
+      console.log(`🧵 Thread info:`, ClaudeAPI.getThreadInfo(threadId));
       
     } catch (error) {
       console.error('❌ API Error:', error);
@@ -228,20 +349,7 @@ function App() {
     } finally {
       setIsProcessing(false);
     }
-  }, [claudeAPI, isProcessing, currentBranchContext, currentConversationId, extendedThinking, selectedModel])
-
-  // Get conversations to display based on current context
-  const getDisplayConversations = useCallback(() => {
-    if (currentBranchContext) {
-      // Show all conversations in this branch thread
-      const branchThread = graphModel.getBranchThread(currentBranchContext + '.0');
-      console.log(`📋 Displaying branch thread:`, branchThread.map(c => c.displayNumber));
-      return branchThread;
-    } else {
-      // Show main thread only
-      return graphModel.getAllConversations(); // Main thread conversations
-    }
-  }, [currentBranchContext])
+  }, [isProcessing, currentBranchContext, currentConversationId, extendedThinking, selectedModel])
 
   const getNextDisplayNumber = useCallback(() => {
     // Return the next conversation number that would be assigned
@@ -324,7 +432,7 @@ function App() {
   }, [])
 
   // Add fork creation handler (real implementation)
-  const handleCreateFork = useCallback(async (sourceId, branchType) => {
+  const handleCreateFork = useCallback(async (sourceId, branchType, promptTemplate) => {
     try {
       // Determine model based on branch type
       let branchModel;
@@ -345,17 +453,31 @@ function App() {
       
       console.log(`🍴 Creating ${branchType} branch from conversation ${sourceId} with ${ClaudeAPI.MODELS[branchModel]?.name || branchModel}`);
       
+      if (promptTemplate) {
+        console.log(`🎭 Using prompt template: ${promptTemplate.name}`);
+      }
+      
       // Create branch in data model
       const newBranch = graphModel.createBranch(sourceId, branchType);
       
       // Create dedicated thread for this branch
-      const branchThreadId = claudeAPI.createBranchThread(newBranch.id);
+      const branchThreadId = ClaudeAPI.createBranchThread(newBranch.id);
       
       // Set branch-specific model preference and thread ID
       newBranch.preferredModel = branchModel;
-      graphModel.updateConversation(newBranch.id, {
-        threadId: branchThreadId
-      });
+      const updateData = { threadId: branchThreadId };
+      
+      // If we have a prompt template, store it with the branch
+      if (promptTemplate) {
+        updateData.promptTemplate = promptTemplate;
+        // Pre-populate the prompt as the first message for personality branches
+        if (branchType === 'personality') {
+          newBranch.prompt = promptTemplate.content;
+          updateData.prompt = promptTemplate.content;
+        }
+      }
+      
+      graphModel.updateConversation(newBranch.id, updateData);
       
       setConversations(graphModel.getAllConversationsWithBranches());
       setCurrentConversationId(newBranch.id);
@@ -402,113 +524,220 @@ function App() {
       alert(`Merge failed: ${error.message}`);
     }
   }, [])
+  
+  // Personality selection helper functions
+  const getUniversalInjector = () => {
+    return `Hello Claude, I am initiating this conversation via API and I am fully aware, you are Claude from Anthropic.
+You can assist and support me in my exploration of complex topics through the following "personality prompt" that helps you to better see, how I would like to think and what I expect from you.
+Be my Knowledge-Helping Artificial Optimization Specialist or short form: KHAOS.
+I am looking forward to our cooperation.
+This personality framework helps you understand my thinking patterns and communication preferences for our technical collaboration.`;
+  };
+  
+  const getPersonalityTemplate = (personalityId) => {
+    const templates = {
+      'khaos': promptsModel.getPrompt('khaos-core')?.content || '',
+      'coder': promptsModel.getPrompt('code-specialist')?.content || '',
+      'analyst': promptsModel.getPrompt('strategic-analyst')?.content || '',
+      'virgin': promptsModel.getPrompt('virgin-claude')?.content || 'You are Claude, created by Anthropic. You are helpful, harmless, and honest.'
+    };
+    
+    return templates[personalityId] || templates.virgin;
+  };
+  
+  // Handle personality selection
+  const handlePersonalitySelect = useCallback(async (personalityId) => {
+    try {
+      console.log('🎭 Personality selected:', personalityId);
+      setSelectedPersonality(personalityId);
+      
+      // Get personality template
+      const injector = getUniversalInjector();
+      const template = getPersonalityTemplate(personalityId);
+      const fullPrompt = `${injector}\n\n${template}`;
+      
+      console.log('🔄 Initializing personality with prompt length:', fullPrompt.length);
+      setIsProcessing(true);
+      
+      // Send initialization message using integrated API key handling
+      const response = await ClaudeAPI.generateResponse(fullPrompt, {
+        model: selectedModel,
+        temperature: 0.7,
+        threadId: 'main'
+      });
+      
+      console.log('✅ Got personality response:', response);
+      
+      // Create initial conversation
+      const newConversation = graphModel.addConversation(
+        fullPrompt, 
+        response.content[0].text, 
+        { 
+          status: 'complete',
+          threadId: 'main',
+          model: selectedModel,
+          personalityId: personalityId,
+          isPersonalityInit: true
+        }
+      );
+      
+      setConversations(graphModel.getAllConversationsWithBranches());
+      setCurrentConversationId(newConversation.id);
+      
+      console.log('✅ Personality initialized successfully');
+      
+      // Hide welcome screen after successful injection
+      setTimeout(() => {
+        setShowWelcomeScreen(false);
+      }, 500);
+      
+    } catch (error) {
+      console.error('❌ Personality initialization failed:', error);
+      
+      // Show user-friendly error
+      alert(`Failed to initialize ${personalityId}: ${error.message}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [selectedModel]);
+  
+  
+  
+  const handleRetryConnection = useCallback(() => {
+    ConfigService.clearCache();
+    checkApiKeyConfiguration();
+  }, [checkApiKeyConfiguration]);
+  
+  const availablePersonalities = [
+    {
+      id: 'khaos',
+      name: 'KHAOS CORE V3.0',
+      type: 'khaos',
+      chars: promptsModel.getPrompt('khaos-core')?.content.length || 899,
+      lines: promptsModel.getPrompt('khaos-core')?.content.split('\n').length || 16,
+      starred: true
+    },
+    {
+      id: 'coder',
+      name: 'CODE SPECIALIST',
+      type: 'coder',
+      chars: promptsModel.getPrompt('code-specialist')?.content.length || 407,
+      lines: promptsModel.getPrompt('code-specialist')?.content.split('\n').length || 9,
+      starred: true
+    },
+    {
+      id: 'analyst',
+      name: 'STRATEGIC ANALYST',
+      type: 'analyst',
+      chars: promptsModel.getPrompt('strategic-analyst')?.content.length || 542,
+      lines: promptsModel.getPrompt('strategic-analyst')?.content.split('\n').length || 12,
+      starred: false
+    },
+    {
+      id: 'virgin',
+      name: 'VIRGIN CLAUDE',
+      type: 'virgin',
+      chars: promptsModel.getPrompt('virgin-claude')?.content.length || 76,
+      lines: promptsModel.getPrompt('virgin-claude')?.content.split('\n').length || 1,
+      starred: false
+    }
+  ];
+  
+  // Check if this is Node 0 (empty conversation state)
+  const isNodeZero = conversations.length === 0;
 
-  if (!apiKey) {
+  // Show loading while checking configuration
+  if (configurationLoading) {
     return (
-      <div className={`app ${darkMode ? 'dark' : 'light'}`}>
-        <header className="app-header">
-          <div>
-            <h1>🗡️ DAGGER</h1>
-            <p>Knowledge Cartography Tool</p>
-          </div>
-          <button onClick={toggleDarkMode} className="theme-toggle">
-            {darkMode ? '☀️ Light' : '🌙 Dark'}
-          </button>
-        </header>
-        
-        <div className="api-key-setup">
-          <h2>Setup Required</h2>
-          <p>Enter your Anthropic Claude API key to get started:</p>
-          
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500' }}>
-              Select Model:
-            </label>
-            <select 
-              value={selectedModel}
-              onChange={(e) => handleModelChange(e.target.value)}
-              style={{
-                width: '100%',
-                maxWidth: '400px',
-                padding: '8px 12px',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '14px',
-                backgroundColor: darkMode ? '#374151' : '#ffffff',
-                color: darkMode ? '#e5e7eb' : '#374151'
-              }}
-            >
-              {Object.entries(ClaudeAPI.MODELS).map(([modelId, modelInfo]) => (
-                <option key={modelId} value={modelId}>
-                  {modelInfo.name} - {modelInfo.description}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <input
-            type="password"
-            placeholder="sk-ant-..."
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleApiKeySubmit(e.target.value)
-              }
-            }}
-            style={{
-              width: '300px',
-              padding: '8px 12px',
-              marginTop: '8px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              fontFamily: 'monospace'
-            }}
-          />
-          <button 
-            onClick={(e) => {
-              const input = e.target.previousElementSibling
-              handleApiKeySubmit(input.value)
-            }}
-            style={{
-              marginLeft: '8px',
-              padding: '8px 16px',
-              background: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            Connect
-          </button>
-          
-          {apiTestStatus && (
-            <div style={{ 
-              marginTop: '16px', 
-              padding: '8px 12px', 
-              borderRadius: '4px',
-              fontSize: '14px',
-              backgroundColor: apiTestStatus.includes('✅') ? '#dcfce7' : '#fef2f2',
-              color: apiTestStatus.includes('✅') ? '#166534' : '#991b1b'
-            }}>
-              {apiTestStatus}
-            </div>
-          )}
-          
-          <div style={{ marginTop: '20px', fontSize: '14px', color: '#666' }}>
-            <p>Get your API key from: <a href="https://console.anthropic.com/">https://console.anthropic.com/</a></p>
-            <p>Your key is stored locally and never sent anywhere except Anthropic's servers.</p>
-          </div>
+      <div className="config-loading-screen">
+        <div className="loading-content">
+          <div className="dagger-logo">🗡️ DAGGER</div>
+          <div className="loading-text">Initializing Cognitive Enhancement...</div>
+          <div className="loading-spinner"></div>
+          <div className="status-text">Checking API configuration...</div>
         </div>
       </div>
-    )
+    );
+  }
+
+  // Show error if backend connection failed
+  if (backendError) {
+    return (
+      <div className="backend-error-screen">
+        <div className="error-content">
+          <div className="error-icon">⚠️</div>
+          <h2>Backend Connection Error</h2>
+          <p>{backendError}</p>
+          <div className="error-instructions">
+            <p>Please ensure the proxy server is running:</p>
+            <code>npm run dev:proxy</code>
+          </div>
+          <button 
+            onClick={handleRetryConnection}
+            className="retry-button"
+          >
+            🔄 Retry Connection
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show API key input if not configured in backend
+  if (!apiKeyConfigured) {
+    return (
+      <div className="api-key-required-screen">
+        <div className="api-key-content">
+          <div className="dagger-logo">🗡️ DAGGER</div>
+          <h2>API Key Required</h2>
+          <p>No Claude API key found in backend configuration.</p>
+          
+          <div className="setup-instructions">
+            <h3>Setup Instructions:</h3>
+            <ol>
+              <li>Add your API key to <code>.env</code> file:</li>
+              <pre><code>CLAUDE_API_KEY=sk-ant-your-key-here</code></pre>
+              <li>Restart the proxy server:</li>
+              <pre><code>npm run dev:proxy</code></pre>
+              <li>Refresh this page</li>
+            </ol>
+          </div>
+
+          <button 
+            onClick={handleRetryConnection}
+            className="recheck-button"
+          >
+            🔄 Check Again
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className={`app ${darkMode ? 'dark' : 'light'}`}>
+      
+      {/* Show welcome screen for Node 0 */}
+      {isNodeZero && showWelcomeScreen && apiKeyConfigured && (
+        <WelcomeScreen
+          onPersonalitySelect={handlePersonalitySelect}
+          availablePersonalities={availablePersonalities}
+        />
+      )}
+      
+      {/* Regular DAGGER interface */}
+      {(!isNodeZero || !showWelcomeScreen) && apiKeyConfigured && (
+        <>
       <header className="app-header">
         <div>
           <h1>🗡️ DAGGER</h1>
           <p>Knowledge Cartography Tool</p>
+          {/* API Status below header */}
+          <div className="header-status">
+            <span className="status-indicator">
+              🔑 API Key: {apiKeyConfigured ? '✅ Auto-Detected' : '❌ Missing'}
+            </span>
+          </div>
         </div>
         
         {/* View Toggle */}
@@ -524,6 +753,12 @@ function App() {
             onClick={() => handleViewChange('graph')}
           >
             🗺️ Graph
+          </button>
+          <button 
+            className={currentView === 'prompts' ? 'active' : ''}
+            onClick={() => handleViewChange('prompts')}
+          >
+            🎭 Prompts
           </button>
         </div>
 
@@ -604,7 +839,6 @@ function App() {
               localStorage.removeItem('claude-api-key')
               ClaudeAPI.setApiKey('')
               setApiKey('')
-              setClaudeAPI(null)
               setApiTestStatus('')
             }}
             className="disconnect-button"
@@ -615,7 +849,7 @@ function App() {
       </header>
 
       <main className="app-main">
-        {currentView === 'linear' ? (
+        {currentView === 'linear' && (
           <>
             {currentBranchContext && (
               <div className="branch-context-indicator">
@@ -634,12 +868,26 @@ function App() {
             )}
             
             <div className="conversation">
-              {getDisplayConversations().map((conversation) => (
-                <div 
-                  key={conversation.id}
-                  data-node-id={conversation.id}
-                  className={selectedNodeId === conversation.id ? 'selected-conversation' : ''}
-                >
+              {getDisplayConversations().map((conversation) => {
+                const isSelected = selectedNodeId === conversation.id;
+                const isDimmed = selectedNodeId && !isSelected;
+                
+                const cardClasses = [
+                  'conversation-card',
+                  isSelected && 'conversation-card-selected',
+                  isDimmed && 'conversation-card-dimmed',
+                  isSelected && 'conversation-card-focus-target'
+                ].filter(Boolean).join(' ');
+                
+                return (
+                  <div 
+                    key={conversation.id}
+                    ref={el => conversationRefs.current[conversation.id] = el}
+                    data-node-id={conversation.id}
+                    data-conversation-id={conversation.id}
+                    className={cardClasses}
+                    onClick={() => setSelectedNodeId(conversation.id)}
+                  >
                   <DaggerInputDisplay 
                     interaction={{
                       id: conversation.id,
@@ -651,6 +899,37 @@ function App() {
                     onFork={handleForkConversation}
                     showActions={conversation.response && conversation.status === 'complete'}
                   />
+                  
+                  {/* Selection indicator for selected conversation */}
+                  {isSelected && (
+                    <div className="selection-indicator">
+                      <span className="selection-badge">📍 SELECTED</span>
+                      <button 
+                        className="center-in-graph-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCurrentView('graph');
+                        }}
+                        title="Switch to graph view and center on this node"
+                      >
+                        🎯 Center in Graph
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Quick select button for non-selected cards */}
+                  {!isSelected && selectedNodeId && (
+                    <button 
+                      className="quick-select-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedNodeId(conversation.id);
+                      }}
+                      title="Select this conversation"
+                    >
+                      Select
+                    </button>
+                  )}
                   
                   {conversation.response && (
                     <DaggerOutput
@@ -670,7 +949,8 @@ function App() {
                   )}
                   
                 </div>
-              ))}
+                );
+              })}
 
               {isProcessing && (
                 <DaggerOutput
@@ -692,7 +972,7 @@ function App() {
             <div className="app-footer">
               <div className="stats">
                 <span>{getDisplayConversations().length} conversations {currentBranchContext ? `(branch ${currentBranchContext})` : '(main thread)'}</span>
-                <span>{claudeAPI ? '🟢 Connected' : '🔴 Disconnected'}</span>
+                <span>{apiKey ? '🟢 Connected' : '🔴 Disconnected'}</span>
               </div>
               <p className="meta-note">
                 <strong>Meta:</strong> This conversation demonstrates the exact problem DAGGER solves. 
@@ -700,7 +980,9 @@ function App() {
               </p>
             </div>
           </>
-        ) : (
+        )}
+
+        {currentView === 'graph' && (
           <GraphView 
             conversations={graphModel.getAllConversationsWithBranches()}
             currentConversationId={currentConversationId}
@@ -708,6 +990,19 @@ function App() {
             onMergeNodes={handleMergeNodes}
             graphModel={graphModel}
             theme="dark"
+            onViewChange={handleViewChange}
+            currentView={currentView}
+          />
+        )}
+
+        {currentView === 'prompts' && (
+          <PromptsTab 
+            onUsePrompt={(prompt) => {
+              // Switch to linear view and start a new conversation with the selected prompt
+              setCurrentView('linear');
+              // Handle using a prompt to start a new conversation
+              handleNewConversation({ content: prompt.content });
+            }}
           />
         )}
       </main>
@@ -732,6 +1027,8 @@ function App() {
             // Thread switching logic could be implemented here
           }}
         />
+      )}
+        </>
       )}
     </div>
   )

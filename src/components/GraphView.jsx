@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import cytoscape from 'cytoscape';
 import dagre from 'cytoscape-dagre';
 import { formatISODateTime } from '../models/GraphModel.js';
+import NavigationOverlay from './NavigationOverlay.jsx';
 
 // Register dagre layout
 cytoscape.use(dagre);
@@ -11,10 +12,16 @@ cytoscape.use(dagre);
  * One conversation = one node with prompt + response
  * Added drag-to-merge functionality for Beta MVP
  */
-export function GraphView({ conversations, currentConversationId, onConversationSelect, onMergeNodes, graphModel, theme }) {
+export function GraphView({ conversations, currentConversationId, onConversationSelect, onMergeNodes, graphModel, theme, onViewChange, currentView }) {
   const containerRef = useRef(null);
   const [cy, setCy] = useState(null);
   const [dragSource, setDragSource] = useState(null);
+  const [focusState, setFocusState] = useState({
+    selectedNodeId: currentConversationId || null,
+    pathToRoot: [],
+    dimmedNodes: [],
+    highlightedPath: []
+  });
 
   // Transform clean conversations to Cytoscape elements
   const createGraphElements = (conversations) => {
@@ -136,11 +143,101 @@ export function GraphView({ conversations, currentConversationId, onConversation
     return formatISODateTime(timestamp);
   };
 
+  // Focus state management functions
+  const getPathToRoot = (nodeId) => {
+    if (!conversations || !nodeId) return [];
+    
+    const conversation = conversations.find(c => c.id === nodeId);
+    if (!conversation) return [];
+    
+    const path = [nodeId];
+    const displayNum = String(conversation.displayNumber);
+    
+    // Build path back to root
+    if (displayNum.includes('.')) {
+      // This is a branch node
+      const parts = displayNum.split('.');
+      const mainThreadNum = parts[0];
+      
+      // Add the main thread node this branched from
+      const mainConv = conversations.find(c => String(c.displayNumber) === mainThreadNum);
+      if (mainConv) {
+        path.unshift(mainConv.id);
+        
+        // Add path to main thread root
+        const mainNum = parseInt(mainThreadNum);
+        for (let i = mainNum - 1; i >= 0; i--) {
+          const ancestorConv = conversations.find(c => String(c.displayNumber) === String(i));
+          if (ancestorConv) {
+            path.unshift(ancestorConv.id);
+          }
+        }
+      }
+    } else {
+      // This is a main thread node
+      const currentNum = parseInt(displayNum);
+      for (let i = currentNum - 1; i >= 0; i--) {
+        const ancestorConv = conversations.find(c => String(c.displayNumber) === String(i));
+        if (ancestorConv) {
+          path.unshift(ancestorConv.id);
+        }
+      }
+    }
+    
+    return path;
+  };
+
+  const selectNode = (nodeId) => {
+    if (!nodeId || !conversations) return;
+    
+    const pathToRoot = getPathToRoot(nodeId);
+    const allNodeIds = conversations.map(c => c.id);
+    const dimmedNodes = allNodeIds.filter(id => !pathToRoot.includes(id));
+    
+    setFocusState({
+      selectedNodeId: nodeId,
+      pathToRoot: pathToRoot,
+      dimmedNodes: dimmedNodes,
+      highlightedPath: [] // Could add edge highlighting here
+    });
+    
+    // Notify parent of selection change
+    if (onConversationSelect) {
+      onConversationSelect(nodeId);
+    }
+  };
+
+  const centerView = () => {
+    if (cy && focusState.selectedNodeId) {
+      const selectedNode = cy.getElementById(focusState.selectedNodeId);
+      if (selectedNode.length > 0) {
+        cy.center(selectedNode);
+        cy.fit(selectedNode, 50);
+      }
+    } else if (cy) {
+      cy.fit();
+    }
+  };
+
   const getNodeClasses = (conversation, currentId) => {
     const classes = ['conversation-node'];
     
-    if (conversation.id === currentId) {
+    // Determine if this is a main branch or side branch node
+    const isMainBranch = !String(conversation.displayNumber).includes('.');
+    
+    if (isMainBranch) {
+      classes.push('main-branch');
+    } else {
+      classes.push('side-branch');
+    }
+    
+    // Focus state classes
+    if (conversation.id === focusState.selectedNodeId) {
       classes.push('selected');
+    }
+    
+    if (focusState.dimmedNodes.includes(conversation.id)) {
+      classes.push('dimmed');
     }
     
     if (conversation.status === 'processing') {
@@ -196,13 +293,18 @@ export function GraphView({ conversations, currentConversationId, onConversation
         }
       },
 
-      // Selected node
+      // Selected node with enhanced focus state
       {
         selector: 'node.selected',
         style: {
-          'border-color': '#f59e0b',
-          'border-width': 4,
-          'background-color': '#1e40af'
+          'border-color': '#3b82f6', // blue-500
+          'border-width': 3,
+          'overlay-color': '#3b82f6',
+          'overlay-opacity': 0.3,
+          'overlay-padding': '8px',
+          'z-index': 10,
+          'transition-property': 'border-color, overlay-opacity',
+          'transition-duration': '0.3s'
         }
       },
 
@@ -224,7 +326,30 @@ export function GraphView({ conversations, currentConversationId, onConversation
         }
       },
 
-      // Complete node
+      // Main Branch Nodes (Green - Primary Spine)
+      {
+        selector: 'node.main-branch.complete',
+        style: {
+          'background-color': '#10b981', // emerald-500
+          'border-color': '#059669', // emerald-600
+          'color': 'white',
+          'font-weight': 'bold'
+        }
+      },
+
+      // Side Branch Nodes (Gray - Subtle)
+      {
+        selector: 'node.side-branch.complete',
+        style: {
+          'background-color': '#6b7280', // gray-500
+          'border-color': '#9ca3af', // gray-400
+          'border-style': 'dashed',
+          'color': 'white',
+          'opacity': 0.7
+        }
+      },
+
+      // Fallback complete node
       {
         selector: 'node.complete',
         style: {
@@ -268,16 +393,40 @@ export function GraphView({ conversations, currentConversationId, onConversation
         }
       },
 
-      // Branch edges - dashed lines
+      // Dimmed nodes (when something else is selected)
+      {
+        selector: 'node.dimmed',
+        style: {
+          'opacity': 0.4,
+          'background-opacity': 0.4,
+          'border-opacity': 0.4,
+          'text-opacity': 0.4
+        }
+      },
+
+      // Main thread edges - strong green lines
+      {
+        selector: 'edge.main-thread-edge',
+        style: {
+          'width': 3,
+          'line-color': '#10b981', // emerald-500
+          'target-arrow-color': '#10b981',
+          'target-arrow-shape': 'triangle',
+          'curve-style': 'bezier'
+        }
+      },
+
+      // Branch edges - subtle gray dashed lines
       {
         selector: 'edge.branch-edge',
         style: {
-          'width': 3,
-          'line-color': '#f59e0b',
-          'target-arrow-color': '#f59e0b',
+          'width': 2,
+          'line-color': '#9ca3af', // gray-400
+          'target-arrow-color': '#9ca3af',
           'target-arrow-shape': 'triangle',
           'curve-style': 'bezier',
-          'line-style': 'dashed'
+          'line-style': 'dashed',
+          'opacity': 0.6
         }
       },
 
@@ -457,6 +606,26 @@ export function GraphView({ conversations, currentConversationId, onConversation
       setDragSource(null);
     });
 
+    // Node selection and focus state management
+    cyInstance.on('tap', 'node', (event) => {
+      const nodeId = event.target.id();
+      console.log('🎯 Node selected:', nodeId);
+      selectNode(nodeId);
+    });
+
+    // Background click to clear selection
+    cyInstance.on('tap', (event) => {
+      if (event.target === cyInstance) {
+        console.log('📍 Background clicked - clearing selection');
+        setFocusState({
+          selectedNodeId: null,
+          pathToRoot: [],
+          dimmedNodes: [],
+          highlightedPath: []
+        });
+      }
+    });
+
     // Auto-fit and center
     cyInstance.fit();
     cyInstance.center();
@@ -470,6 +639,13 @@ export function GraphView({ conversations, currentConversationId, onConversation
       }
     };
   }, [conversations, currentConversationId]);
+
+  // Sync focus state with external selection
+  useEffect(() => {
+    if (currentConversationId && currentConversationId !== focusState.selectedNodeId) {
+      selectNode(currentConversationId);
+    }
+  }, [currentConversationId]);
 
   // Add tooltip on hover
   useEffect(() => {
@@ -499,6 +675,17 @@ Status: ${data.status}`;
         </span>
       </div>
       <div className="graph-container">
+        <NavigationOverlay
+          selectedNodeId={focusState.selectedNodeId}
+          pathToRoot={focusState.pathToRoot}
+          totalNodes={conversations?.length || 0}
+          currentView={currentView}
+          graphModel={graphModel}
+          onNavigate={selectNode}
+          onCenterView={centerView}
+          onViewChange={onViewChange}
+        />
+        
         <div 
           ref={containerRef} 
           className="cytoscape-container"
@@ -510,6 +697,7 @@ Status: ${data.status}`;
             borderRadius: '8px'
           }}
         />
+        
         {dragSource && (
           <div className="merge-instructions">
             🔀 Drag to merge with another end node

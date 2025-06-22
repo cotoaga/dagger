@@ -4,15 +4,129 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>🗡️ DAGGER - Knowledge Cartography Tool</title>
+    <title>🗡️ DAGGER v0.3 - Knowledge Cartography Tool</title>
     <style>
       /* Nuclear reset - kill all browser defaults */
       * { margin: 0; padding: 0; box-sizing: border-box; }
       html, body, #root { margin: 0 !important; padding: 0 !important; width: 100%; height: 100%; }
+      
+      /* Fallback styling for direct file access */
+      .dagger-fallback {
+        display: none;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        max-width: 800px;
+        margin: 50px auto;
+        padding: 40px;
+        background: #1a1a1a;
+        color: #e0e0e0;
+        border-radius: 12px;
+        border: 2px solid #333;
+        line-height: 1.6;
+      }
+      
+      .dagger-fallback h1 {
+        color: #fff;
+        margin-bottom: 20px;
+        font-size: 2.5em;
+      }
+      
+      .dagger-fallback h2 {
+        color: #4a9eff;
+        margin: 30px 0 15px 0;
+        font-size: 1.5em;
+      }
+      
+      .dagger-fallback code {
+        background: #2a2a2a;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: 'Monaco', 'Consolas', monospace;
+        color: #a8ff60;
+      }
+      
+      .dagger-fallback pre {
+        background: #2a2a2a;
+        padding: 15px;
+        border-radius: 8px;
+        overflow-x: auto;
+        margin: 15px 0;
+        border-left: 4px solid #4a9eff;
+      }
+      
+      .dagger-fallback .warning {
+        background: #ff4444;
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 20px 0;
+        font-weight: bold;
+      }
+      
+      .dagger-fallback .success {
+        background: #44aa44;
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 20px 0;
+      }
     </style>
+    <script>
+      // Show fallback content if React doesn't load within 3 seconds
+      setTimeout(function() {
+        if (!document.querySelector('#root').innerHTML.trim()) {
+          document.getElementById('fallback').style.display = 'block';
+        }
+      }, 3000);
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    
+    <!-- Fallback content for direct file access -->
+    <div class="dagger-fallback" id="fallback">
+      <h1>🗡️ DAGGER v0.3 - Knowledge Cartography Tool</h1>
+      
+      <div class="warning">
+        ⚠️ You're viewing this file directly. DAGGER requires development servers to function properly.
+      </div>
+      
+      <h2>What is DAGGER?</h2>
+      <p>DAGGER transforms linear chat into navigable knowledge topology through sophisticated conversation branching with drag-to-merge capabilities. It solves the fundamental constraint of conversational AI: <strong>context bandwidth limitations</strong>.</p>
+      
+      <h2>🚀 How to Actually Run DAGGER</h2>
+      
+      <p><strong>Step 1:</strong> Open your terminal/command prompt</p>
+      
+      <p><strong>Step 2:</strong> Navigate to the DAGGER directory and install dependencies:</p>
+      <pre><code>cd /path/to/dagger
+npm install
+cp .env.example .env
+# Add your Claude API key to .env</code></pre>
+      
+      <p><strong>Step 3:</strong> Start BOTH servers (in separate terminals):</p>
+      <pre><code># Terminal 1: Proxy server
+npm run dev:proxy
+
+# Terminal 2: React app
+npm run dev</code></pre>
+      
+      <div class="success">
+        ✅ Then open your browser to: <strong>http://localhost:5173</strong>
+      </div>
+      
+      <h2>Why Two Servers?</h2>
+      <ul>
+        <li><strong>Proxy Server (3001):</strong> Handles Claude API authentication and CORS</li>
+        <li><strong>React App (5173):</strong> Serves the sophisticated conversation interface</li>
+        <li><strong>Both Required:</strong> Distributed cognition architecture needs coordinated operation</li>
+      </ul>
+      
+      <h2>📚 Documentation</h2>
+      <p>For complete setup instructions and technical details, see <code>README.md</code> and <code>CLAUDE.md</code> in this directory.</p>
+      
+      <p><em>DAGGER is not a simple webpage - it's distributed cognition architecture for knowledge cartography.</em> 🗡️</p>
+    </div>
+    
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

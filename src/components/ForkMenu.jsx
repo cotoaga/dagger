@@ -1,11 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import PromptsModel from '../models/PromptsModel';
 
 /**
- * ForkMenu - Simple branch type selector
+ * ForkMenu - Enhanced branch type selector with prompt integration
  * Shows when user clicks Fork button in Linear mode
  */
 export function ForkMenu({ sourceConversationId, onCreateFork, onClose }) {
   const [selectedType, setSelectedType] = useState('knowledge');
+  const [selectedPrompt, setSelectedPrompt] = useState('');
+  const [prompts, setPrompts] = useState([]);
+  const [promptsModel] = useState(() => new PromptsModel());
+
+  useEffect(() => {
+    // Load available prompts
+    setPrompts(promptsModel.getAllPrompts());
+  }, []);
 
   const branchTypes = [
     {
@@ -18,7 +27,7 @@ export function ForkMenu({ sourceConversationId, onCreateFork, onClose }) {
       type: 'personality', 
       emoji: '🎭',
       title: 'Personality Branch',
-      description: 'KHAOS-Coder loaded, no conversation history'
+      description: 'Load custom AI personality from prompt templates'
     },
     {
       type: 'knowledge',
@@ -29,8 +38,17 @@ export function ForkMenu({ sourceConversationId, onCreateFork, onClose }) {
   ];
 
   const handleCreate = () => {
-    onCreateFork(sourceConversationId, selectedType);
+    if (selectedType === 'personality' && selectedPrompt) {
+      const prompt = prompts.find(p => p.id === selectedPrompt);
+      onCreateFork(sourceConversationId, selectedType, prompt);
+    } else {
+      onCreateFork(sourceConversationId, selectedType);
+    }
   };
+
+  const personalityPrompts = prompts.filter(p => p.category === 'personality');
+  const starredPrompts = prompts.filter(p => p.starred);
+  const isPersonalitySelected = selectedType === 'personality';
 
   return (
     <div className="fork-menu-overlay" onClick={onClose}>
@@ -57,9 +75,87 @@ export function ForkMenu({ sourceConversationId, onCreateFork, onClose }) {
           ))}
         </div>
 
+        {/* Prompt Selection for Personality Branches */}
+        {isPersonalitySelected && (
+          <div className="prompt-selection">
+            <h4>🎭 Select Personality Template</h4>
+            
+            {starredPrompts.length > 0 && (
+              <div className="prompt-group">
+                <h5>⭐ Starred Templates</h5>
+                <div className="prompt-options">
+                  {starredPrompts.map(prompt => (
+                    <label key={prompt.id} className={selectedPrompt === prompt.id ? 'selected' : ''}>
+                      <input 
+                        type="radio" 
+                        value={prompt.id}
+                        checked={selectedPrompt === prompt.id}
+                        onChange={e => setSelectedPrompt(e.target.value)}
+                      />
+                      <div className="prompt-option">
+                        <div className="prompt-header">
+                          <strong>{prompt.name}</strong>
+                          <span className="prompt-category">{prompt.category}</span>
+                        </div>
+                        <p className="prompt-preview">
+                          {prompt.content.slice(0, 100)}
+                          {prompt.content.length > 100 && '...'}
+                        </p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {personalityPrompts.length > 0 && (
+              <div className="prompt-group">
+                <h5>🎭 All Personality Templates</h5>
+                <div className="prompt-options">
+                  {personalityPrompts.map(prompt => (
+                    <label key={prompt.id} className={selectedPrompt === prompt.id ? 'selected' : ''}>
+                      <input 
+                        type="radio" 
+                        value={prompt.id}
+                        checked={selectedPrompt === prompt.id}
+                        onChange={e => setSelectedPrompt(e.target.value)}
+                      />
+                      <div className="prompt-option">
+                        <div className="prompt-header">
+                          <strong>{prompt.name}</strong>
+                          {prompt.starred && <span className="star-indicator">⭐</span>}
+                        </div>
+                        <p className="prompt-preview">
+                          {prompt.content.slice(0, 100)}
+                          {prompt.content.length > 100 && '...'}
+                        </p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {personalityPrompts.length === 0 && (
+              <div className="no-prompts">
+                <p>No personality templates available. <br/>
+                   Create some in the 🎭 Prompts tab first!</p>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="fork-actions">
-          <button onClick={handleCreate} className="create-fork-btn">
-            Create {selectedType} Branch
+          <button 
+            onClick={handleCreate} 
+            className="create-fork-btn"
+            disabled={isPersonalitySelected && !selectedPrompt}
+            title={isPersonalitySelected && !selectedPrompt ? 'Please select a personality template' : ''}
+          >
+            {isPersonalitySelected && selectedPrompt ? 
+              `Create ${prompts.find(p => p.id === selectedPrompt)?.name} Branch` :
+              `Create ${selectedType} Branch`
+            }
           </button>
           <button onClick={onClose} className="cancel-btn">
             Cancel

@@ -899,12 +899,15 @@ export class GraphModel {
 
   /**
    * Helper: Get all existing branches for a base number
+   * Looks for internal format like "1.1.0", "1.2.0" from base "1"
    */
   getAllBranchesForBase(baseNumber) {
     const branches = [];
     for (const [id, conversation] of this.conversations) {
       const displayNum = String(conversation.displayNumber);
-      if (displayNum.startsWith(`${baseNumber}.`) && displayNum.includes('.')) {
+      // Look for pattern: baseNumber.X.0 (e.g., "1.1.0", "1.2.0")
+      const pattern = new RegExp(`^${baseNumber}\\.(\\d+)\\.0$`);
+      if (pattern.test(displayNum)) {
         branches.push(conversation);
       }
     }
