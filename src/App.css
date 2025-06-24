@@ -1089,7 +1089,7 @@ html.dark {
   color: #e2e8f0;
 }
 
-.fork-btn:hover {
+.branch-btn:hover {
   background: #f59e0b;
   border-color: #f59e0b;
   color: white;
@@ -1102,7 +1102,7 @@ html.dark {
 }
 
 /* Fork Menu */
-.fork-menu-overlay {
+.branch-menu-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -1115,7 +1115,7 @@ html.dark {
   z-index: 1000;
 }
 
-.fork-menu {
+.branch-menu {
   background: #ffffff;
   border: 2px solid #e5e7eb;
   border-radius: 12px;
@@ -1125,13 +1125,13 @@ html.dark {
   color: #374151;
 }
 
-.app.dark .fork-menu {
+.app.dark .branch-menu {
   background: #2d3748;
   border-color: #4a5568;
   color: #e2e8f0;
 }
 
-.fork-menu h3 {
+.branch-menu h3 {
   margin: 0 0 20px 0;
   text-align: center;
 }
@@ -1200,14 +1200,14 @@ html.dark {
   color: #a0aec0;
 }
 
-.fork-actions {
+.branch-actions {
   display: flex;
   gap: 12px;
   justify-content: center;
   margin-top: 20px;
 }
 
-.create-fork-btn {
+.create-branch-btn {
   background: #f59e0b;
   color: white;
   border: none;
@@ -1217,7 +1217,7 @@ html.dark {
   font-weight: bold;
 }
 
-.create-fork-btn:hover {
+.create-branch-btn:hover {
   background: #d97706;
 }
 
@@ -2034,14 +2034,14 @@ html.dark {
   font-style: italic;
 }
 
-.fork-actions .create-fork-btn:disabled {
+.branch-actions .create-branch-btn:disabled {
   background: var(--bg-tertiary);
   color: var(--text-muted);
   cursor: not-allowed;
   opacity: 0.6;
 }
 
-.fork-actions .create-fork-btn:disabled:hover {
+.branch-actions .create-branch-btn:disabled:hover {
   transform: none;
   box-shadow: none;
 }
@@ -2547,4 +2547,302 @@ html.dark {
   .conversation-card-focus-target {
     scroll-margin-top: 80px;
   }
+}
+/* Token Gauge Component */
+.token-gauge {
+  background: #1a202c;
+  border: 1px solid #2d3748;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 4px 0;
+  font-size: 12px;
+}
+
+.gauge-metrics {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 40px;
+}
+
+.metric-value {
+  font-weight: bold;
+  font-size: 13px;
+  color: #e2e8f0;
+}
+
+.metric-value.cost {
+  color: #fbbf24;
+}
+
+.metric-label {
+  font-size: 10px;
+  color: #a0aec0;
+  margin-top: 1px;
+}
+
+.gauge-bar {
+  height: 3px;
+  background: #2d3748;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.gauge-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+  border-radius: 2px;
+}
+
+/* Light theme adjustments */
+.app.light .token-gauge {
+  background: #f7fafc;
+  border-color: #e2e8f0;
+}
+
+.app.light .metric-value {
+  color: #2d3748;
+}
+
+.app.light .metric-label {
+  color: #4a5568;
+}
+
+.app.light .gauge-bar {
+  background: #e2e8f0;
+}
+
+/* Honest Status Messages */
+.loading-text {
+  font-style: italic;
+  color: #fbbf24;
+  font-size: 14px;
+  margin-top: 8px;
+  text-align: center;
+  animation: honest-pulse 2s ease-in-out infinite;
+}
+
+.app.dark .loading-text {
+  color: #fcd34d;
+}
+
+.processing {
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+.ready {
+  color: #10b981;
+  font-weight: 500;
+}
+
+@keyframes honest-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* Unicode Font Support for Multicultural Matrix */
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600&display=swap");
+
+/* Matrix Rain with Unicode Support */
+.matrix-rain {
+  font-family: "Noto Sans", "DejaVu Sans", "Arial Unicode MS", sans-serif;
+  font-feature-settings: "liga" 1, "calt" 1;
+}
+
+/* Ensure proper Unicode rendering */
+* {
+  font-variant-ligatures: normal;
+  text-rendering: optimizeLegibility;
+}
+
+/* ====================================
+   BOTTOM ACTION BUTTONS STYLING
+   ==================================== */
+
+/* Forcefully hide any remaining upper-right buttons */
+.dagger-output .copy-button,
+.dagger-output .fork-button,
+.response-header .action-btn,
+.output-header .copy-btn,
+.output-header .fork-btn {
+  display: none !important;
+}
+
+/* Ensure only bottom buttons are visible */
+.response-actions-bottom {
+  display: flex !important;
+}
+
+/* New bottom action buttons layout */
+.response-actions-bottom {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding: 1rem 0;
+  border-top: 1px solid #2d3748;
+}
+
+.action-btn {
+  background: #374151;
+  color: white;
+  border: 1px solid #4b5563;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  min-width: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.copy-btn:hover {
+  background: #3b82f6;
+  border-color: #2563eb;
+}
+
+.branch-btn:hover {
+  background: #10b981;
+  border-color: #059669;
+}
+
+.continue-btn:hover {
+  background: #f59e0b;
+  border-color: #d97706;
+}
+
+/* Light theme adjustments for bottom buttons */
+.app.light .response-actions-bottom {
+  border-top-color: #e5e7eb;
+}
+
+.app.light .action-btn {
+  background: #f3f4f6;
+  color: #374151;
+  border-color: #d1d5db;
+}
+
+.app.light .action-btn:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.app.light .copy-btn:hover {
+  background: #dbeafe;
+  border-color: #3b82f6;
+  color: #1e40af;
+}
+
+.app.light .branch-btn:hover {
+  background: #d1fae5;
+  border-color: #10b981;
+  color: #047857;
+}
+
+.app.light .continue-btn:hover {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+/* ====================================
+   IMPROVED FOOTER LAYOUT
+   ==================================== */
+
+/* Horizontal separator before footer */
+.footer-separator {
+  border: none;
+  height: 1px;
+  background: linear-gradient(to right, transparent, #4b5563, transparent);
+  margin: 2rem 0 1rem 0;
+}
+
+/* Main footer container */
+.app-footer {
+  text-align: center;
+  padding: 1rem 2rem 2rem 2rem;
+  background: rgba(13, 17, 23, 0.8);
+  margin-top: auto; /* Push to bottom if using flexbox layout */
+}
+
+/* First footer line - MVP attribution */
+.footer-line-1 {
+  font-size: 0.95rem;
+  color: #a0aec0;
+  margin-bottom: 0.75rem;
+  font-weight: 500;
+}
+
+/* COTOAGA.NET link styling */
+.cotoaga-link {
+  color: #00d4ff;
+  text-decoration: none;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.cotoaga-link:hover {
+  color: #38bdf8;
+  background: rgba(0, 212, 255, 0.1);
+  text-decoration: underline;
+}
+
+/* Second footer line - SBaaS tagline */
+.footer-line-2 {
+  font-size: 0.85rem;
+  color: #6b7280;
+  font-style: italic;
+  font-weight: 500;
+  padding: 0.75rem 1rem;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  border-radius: 8px;
+  margin: 0 auto;
+  max-width: 90%;
+  line-height: 1.4;
+}
+
+/* Light theme adjustments */
+.app.light .footer-separator {
+  background: linear-gradient(to right, transparent, #d1d5db, transparent);
+}
+
+.app.light .app-footer {
+  background: rgba(247, 250, 252, 0.9);
+}
+
+.app.light .footer-line-1 {
+  color: #4a5568;
+}
+
+.app.light .cotoaga-link {
+  color: #2563eb;
+}
+
+.app.light .cotoaga-link:hover {
+  color: #1d4ed8;
+  background: rgba(37, 99, 235, 0.1);
+}
+
+.app.light .footer-line-2 {
+  color: #374151;
+  background: rgba(59, 130, 246, 0.05);
+  border-color: rgba(59, 130, 246, 0.1);
 }

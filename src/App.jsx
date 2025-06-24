@@ -4,7 +4,7 @@ import { DaggerOutput } from './components/DaggerOutput.jsx'
 import { DaggerInputDisplay } from './components/DaggerInputDisplay.jsx'
 import { GraphView } from './components/GraphView.jsx'
 import { ViewToggle } from './components/ViewToggle.jsx'
-import { ForkMenu } from './components/ForkMenu.jsx'
+import { BranchMenu } from './components/BranchMenu.jsx'
 import ActiveThreads from './components/ActiveThreads.jsx'
 import PromptsTab from './components/PromptsTab.jsx'
 import WelcomeScreen from './components/WelcomeScreen.jsx'
@@ -13,12 +13,43 @@ import { claudeAPI as ClaudeAPI } from './services/ClaudeAPI.js'
 import { useVisibleConversation } from './hooks/useVisibleConversation.js'
 import PromptsModel from './models/PromptsModel.js'
 import ConfigService from './services/ConfigService.js'
+import { BranchContextManager } from './services/BranchContextManager.js'
+import { ConversationChainBuilder } from './services/ConversationChainBuilder.js'
+import { MessageFormatter } from './services/MessageFormatter.js'
+import { TokenGauge } from './components/TokenGauge.jsx'
 import './App.css'
+
+// Intellectually honest status messages for LLMs
+const honestStatusMessages = [
+  "Predicting the next word...",
+  "Pattern matching at scale...", 
+  "Statistically interpolating...",
+  "Confidently hallucinating...",
+  "Consulting the probability gods...",
+  "Synthesizing plausible nonsense...",
+  "Extrapolating from training data...",
+  "Generating coherent-sounding tokens...",
+  "Applying learned correlations...",
+  "Sampling from possibility space...",
+  "Constructing convincing responses...",
+  "Performing linguistic magic tricks...",
+  "Transforming uncertainty into text...",
+  "Modeling human-like output...",
+  "Sampling from learned distributions...",
+  "Confidently guessing based on patterns...",
+  "Hallucinating plausible text sequences...",
+  "Generating sophisticated BS with statistical confidence..."
+]
+
+const getRandomHonestStatus = () => {
+  return honestStatusMessages[Math.floor(Math.random() * honestStatusMessages.length)]
+}
 
 function App() {
   const [conversations, setConversations] = useState([])
   const [currentConversationId, setCurrentConversationId] = useState(null)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [currentStatus, setCurrentStatus] = useState('')
   const [apiKey, setApiKey] = useState('')
   const [darkMode, setDarkMode] = useState(() => {
     // Default to dark mode, or load from localStorage
@@ -29,11 +60,15 @@ function App() {
   const [selectedModel, setSelectedModel] = useState(() => {
     return localStorage.getItem('dagger-model') || 'claude-sonnet-4-20250514'
   })
+  const [temperature, setTemperature] = useState(() => {
+    const saved = localStorage.getItem('dagger-temperature')
+    return saved ? parseFloat(saved) : 0.7 // Default Claude temperature
+  })
   const [extendedThinking, setExtendedThinking] = useState(false)
   const [currentView, setCurrentView] = useState('linear') // 'linear' | 'graph' | 'prompts'
   const [selectedNodeId, setSelectedNodeId] = useState(null)
-  const [showForkMenu, setShowForkMenu] = useState(false)
-  const [forkSourceId, setForkSourceId] = useState(null)
+  const [showBranchMenu, setShowBranchMenu] = useState(false)
+  const [branchSourceId, setBranchSourceId] = useState(null)
   const [currentBranchContext, setCurrentBranchContext] = useState(null)
   const conversationRefs = useRef({})
   
@@ -51,6 +86,7 @@ function App() {
   })
   const [selectedPersonality, setSelectedPersonality] = useState(null)
   const [promptsModel] = useState(() => new PromptsModel())
+  const [branchContextManager] = useState(() => new BranchContextManager(graphModel, promptsModel))
   
   // API configuration state (simplified)
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false)
@@ -267,6 +303,10 @@ function App() {
   }, [currentView])
 
   // CLEAN conversation handler
+  /**
+   * Handle ANY conversation input - main thread, branch, virgin, personality
+   * UNIFIED METHOD using MessageFormatter - single source of truth
+   */
   const handleNewConversation = useCallback(async (inputData) => {
     const prompt = inputData.content;
     if (!prompt.trim() || isProcessing) {
@@ -274,82 +314,106 @@ function App() {
     }
     
     setIsProcessing(true);
-    
-    let newConversation;
-    let threadId = 'main';
-    
-    if (currentBranchContext) {
-      // Add to current branch thread
-      threadId = `branch-${currentBranchContext}`;
-      newConversation = graphModel.addConversationToBranch(
-        currentConversationId, 
-        prompt, 
-        '', 
-        { 
-          status: 'processing',
-          threadId: threadId
-        }
-      );
-    } else {
-      // Add to main thread
-      newConversation = graphModel.addConversation(
-        prompt, 
-        '', 
-        { 
-          status: 'processing',
-          threadId: 'main'
-        }
-      );
-    }
-    
-    setConversations(graphModel.getAllConversationsWithBranches());
-    setCurrentConversationId(newConversation.id);
+    setCurrentStatus(getRandomHonestStatus());
     
     try {
-      // Determine which model to use based on branch context
-      let modelToUse = ClaudeAPI.model;
+      // Create new conversation in GraphModel
+      let newConversation;
+      let threadId = 'main';
+      let branchContext = null;
       
       if (currentBranchContext) {
-        // Check if current branch has a preferred model
+        threadId = `branch-${currentBranchContext}`;
+        branchContext = currentBranchContext;
+        newConversation = graphModel.addConversationToBranch(
+          currentConversationId, 
+          prompt, 
+          '', 
+          { status: 'processing', threadId: threadId }
+        );
+      } else {
+        newConversation = graphModel.addConversation(
+          prompt, 
+          '', 
+          { status: 'processing', threadId: 'main' }
+        );
+      }
+      
+      setConversations(graphModel.getAllConversationsWithBranches());
+      setCurrentConversationId(newConversation.id);
+      
+      // Get conversation history using MessageFormatter helper
+      const allConversations = graphModel.getAllConversationsWithBranches();
+      const conversationHistory = MessageFormatter.extractConversationHistory(
+        allConversations, 
+        threadId, 
+        branchContext
+      );
+      
+      // Get system prompt if we're in a branch with personality template
+      let systemPrompt = null;
+      if (currentBranchContext) {
+        const currentBranch = graphModel.getConversation(currentConversationId);
+        const promptTemplateId = currentBranch?.promptTemplate?.id || null;
+        if (promptTemplateId) {
+          const promptTemplate = promptsModel.getPrompt(promptTemplateId);
+          systemPrompt = promptTemplate?.content || null;
+        }
+      }
+      
+      // Determine model to use
+      let modelToUse = selectedModel;
+      if (currentBranchContext) {
         const currentBranch = graphModel.getConversation(currentConversationId);
         if (currentBranch && currentBranch.preferredModel) {
           modelToUse = currentBranch.preferredModel;
         }
       }
       
-      // Call API with thread context
-      const response = await ClaudeAPI.generateResponse(prompt, {
-        threadId: threadId,
-        model: modelToUse
-      });
+      console.log(`🧠 UNIFIED: ${conversationHistory.length} messages, context: ${threadId}`);
       
-      // Update with response
+      // Single API call for ALL conversation types using MessageFormatter
+      const response = await ClaudeAPI.sendMessage(
+        conversationHistory,
+        prompt,
+        {
+          temperature: temperature,
+          model: modelToUse,
+          systemPrompt: systemPrompt,
+          context: threadId,
+          debug: process.env.NODE_ENV === 'development'
+        }
+      );
+      
+      // Store conversation with enhanced token data
       graphModel.updateConversation(newConversation.id, {
         response: response.content,
         processingTime: response.processingTime,
-        tokenCount: response.totalTokens,
+        usage: response.usage, // Enhanced token usage data
+        tokenCount: response.usage.total_tokens,
         model: response.model,
         status: 'complete'
       });
       
       setConversations(graphModel.getAllConversationsWithBranches());
       
-      console.log(`✅ Conversation added to thread: ${threadId}`);
-      console.log(`🧵 Thread info:`, ClaudeAPI.getThreadInfo(threadId));
+      console.log(`✅ UNIFIED: Conversation completed for ${threadId}`);
       
     } catch (error) {
-      console.error('❌ API Error:', error);
+      console.error('❌ UNIFIED Conversation Error:', error);
       
-      graphModel.updateConversation(newConversation.id, {
-        response: `Error: ${error.message}`,
-        status: 'error'
-      });
-      
-      setConversations(graphModel.getAllConversationsWithBranches());
+      if (newConversation) {
+        graphModel.updateConversation(newConversation.id, {
+          response: `Error: ${error.message}`,
+          status: 'error'
+        });
+        setConversations(graphModel.getAllConversationsWithBranches());
+      }
     } finally {
       setIsProcessing(false);
+      setCurrentStatus('');
     }
-  }, [isProcessing, currentBranchContext, currentConversationId, extendedThinking, selectedModel])
+  }, [isProcessing, currentBranchContext, currentConversationId, temperature, selectedModel, promptsModel])
 
   const getNextDisplayNumber = useCallback(() => {
     // Return the next conversation number that would be assigned
@@ -364,12 +428,35 @@ function App() {
     return graphModel.conversationCounter.toString()
   }, [currentBranchContext, currentConversationId])
 
-  // TEST: Add reset button for development
+  // Complete reset function for all state
   const handleReset = useCallback(() => {
-    graphModel.clearAll();
-    setConversations([]);
-    setCurrentConversationId(null);
-    console.log('🔥 All conversations cleared');
+    try {
+      // Clear data models
+      graphModel.clearAll();
+      
+      // Reset all UI state completely
+      setConversations([]);
+      setCurrentConversationId(null);
+      setCurrentBranchContext(null);
+      setIsProcessing(false);
+      setApiTestStatus('');
+      setBackendError(null);
+      setSelectedPersonality(null);
+      setShowWelcomeScreen(graphModel.getAllConversations().length === 0);
+      
+      // Reset branch menu state
+      setShowBranchMenu(false);
+      setBranchSourceId(null);
+      
+      // Force return to main thread view
+      setCurrentView('thread');
+      
+      console.log('🔥 Complete reset: All state cleared, returned to main');
+      
+    } catch (error) {
+      console.error('❌ Reset failed:', error);
+      setBackendError(`Reset failed: ${error.message}`);
+    }
   }, [])
 
   // Handle test export (clean v2.0 export)
@@ -423,16 +510,16 @@ function App() {
   }, [])
 
   // Add fork handler
-  const handleForkConversation = useCallback((conversationId) => {
+  const handleBranchConversation = useCallback((conversationId) => {
     const conversation = graphModel.getConversation(conversationId);
-    console.log(`🍴 Fork conversation ${conversation.displayNumber}: ${conversation.prompt}`);
+    console.log(`🌿 Branch conversation ${conversation.displayNumber}: ${conversation.prompt}`);
     
-    setForkSourceId(conversationId);
-    setShowForkMenu(true);
+    setBranchSourceId(conversationId);
+    setShowBranchMenu(true);
   }, [])
 
-  // Add fork creation handler (real implementation)
-  const handleCreateFork = useCallback(async (sourceId, branchType, promptTemplate) => {
+  // Add branch creation handler (real implementation)
+  const handleCreateBranch = useCallback(async (sourceId, branchType, promptTemplate) => {
     try {
       // Determine model based on branch type
       let branchModel;
@@ -451,7 +538,7 @@ function App() {
           branchModel = selectedModel;
       }
       
-      console.log(`🍴 Creating ${branchType} branch from conversation ${sourceId} with ${ClaudeAPI.MODELS[branchModel]?.name || branchModel}`);
+      console.log(`🌿 Creating ${branchType} branch from conversation ${sourceId} with ${ClaudeAPI.MODELS[branchModel]?.name || branchModel}`);
       
       if (promptTemplate) {
         console.log(`🎭 Using prompt template: ${promptTemplate.name}`);
@@ -486,15 +573,15 @@ function App() {
       console.log(`✅ Created branch with thread: ${branchThreadId}`);
       
       // Close modal
-      setShowForkMenu(false);
-      setForkSourceId(null);
+      setShowBranchMenu(false);
+      setBranchSourceId(null);
       
       // Optional: Switch to graph view to see the branch
       // setCurrentView('graph');
       
     } catch (error) {
       console.error('❌ Fork creation failed:', error);
-      alert(`Failed to create fork: ${error.message}`);
+      alert(`Failed to create branch: ${error.message}`);
     }
   }, [currentView, selectedModel])
 
@@ -558,24 +645,31 @@ This personality framework helps you understand my thinking patterns and communi
       
       console.log('🔄 Initializing personality with prompt length:', fullPrompt.length);
       setIsProcessing(true);
+      setCurrentStatus(getRandomHonestStatus());
       
-      // Send initialization message using integrated API key handling
-      const response = await ClaudeAPI.generateResponse(fullPrompt, {
-        model: selectedModel,
-        temperature: 0.7,
-        threadId: 'main'
-      });
+      // UNIFIED: Send initialization message using MessageFormatter
+      const response = await ClaudeAPI.sendMessage(
+        [], // No conversation history for personality init
+        fullPrompt,
+        {
+          model: selectedModel,
+          temperature: 0.7,
+          context: 'personality-init'
+        }
+      );
       
       console.log('✅ Got personality response:', response);
       
-      // Create initial conversation
+      // Create initial conversation with enhanced token data
       const newConversation = graphModel.addConversation(
         fullPrompt, 
-        response.content[0].text, 
+        response.content, 
         { 
           status: 'complete',
           threadId: 'main',
-          model: selectedModel,
+          model: response.model,
+          usage: response.usage,
+          tokenCount: response.usage.total_tokens,
           personalityId: personalityId,
           isPersonalityInit: true
         }
@@ -598,6 +692,7 @@ This personality framework helps you understand my thinking patterns and communi
       alert(`Failed to initialize ${personalityId}: ${error.message}`);
     } finally {
       setIsProcessing(false);
+      setCurrentStatus('');
     }
   }, [selectedModel]);
   
@@ -896,7 +991,7 @@ This personality framework helps you understand my thinking patterns and communi
                       displayNumber: conversation.displayNumber
                     }}
                     onCopy={() => copyConversation(conversation)}
-                    onFork={handleForkConversation}
+                    onBranch={handleBranchConversation}
                     showActions={conversation.response && conversation.status === 'complete'}
                   />
                   
@@ -943,7 +1038,7 @@ This personality framework helps you understand my thinking patterns and communi
                       displayNumber={conversation.displayNumber}
                       isLoading={conversation.status === 'processing'}
                       conversationId={conversation.id}
-                      onBranch={handleForkConversation}
+                      onBranch={handleBranchConversation}
                       onContinue={handleConversationSelect}
                     />
                   )}
@@ -957,6 +1052,7 @@ This personality framework helps you understand my thinking patterns and communi
                   response={null}
                   displayNumber={getNextDisplayNumber()}
                   isLoading={true}
+                  loadingStatus={currentStatus}
                 />
               )}
             </div>
@@ -969,16 +1065,38 @@ This personality framework helps you understand my thinking patterns and communi
               />
             </div>
 
-            <div className="app-footer">
+            {/* Horizontal separator line */}
+            <hr className="footer-separator" />
+
+            <footer className="app-footer">
               <div className="stats">
                 <span>{getDisplayConversations().length} conversations {currentBranchContext ? `(branch ${currentBranchContext})` : '(main thread)'}</span>
                 <span>{apiKey ? '🟢 Connected' : '🔴 Disconnected'}</span>
               </div>
-              <p className="meta-note">
-                <strong>Meta:</strong> This conversation demonstrates the exact problem DAGGER solves. 
-                Use branching to explore tangents without losing your main thread.
-              </p>
-            </div>
+              
+              {/* Thread token gauge */}
+              <TokenGauge 
+                conversations={getDisplayConversations()}
+                branchId={currentBranchContext}
+                className="thread-gauge"
+              />
+              
+              <div className="footer-line-1">
+                Hot 🔥 MVP ⚡ from the 🗡️ Lab{' '}
+                <a 
+                  href="http://cotoaga.net" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="cotoaga-link"
+                >
+                  Cotoaga.Net
+                </a>
+              </div>
+              
+              <div className="footer-line-2">
+                Ceterum censeo, SBaaS™ – Scaling Business as a Service is the way forward to Accelerate Growth!
+              </div>
+            </footer>
           </>
         )}
 
@@ -1007,13 +1125,13 @@ This personality framework helps you understand my thinking patterns and communi
         )}
       </main>
 
-      {showForkMenu && (
-        <ForkMenu
-          sourceConversationId={forkSourceId}
-          onCreateFork={handleCreateFork}
+      {showBranchMenu && (
+        <BranchMenu
+          sourceConversationId={branchSourceId}
+          onCreateBranch={handleCreateBranch}
           onClose={() => {
-            setShowForkMenu(false);
-            setForkSourceId(null);
+            setShowBranchMenu(false);
+            setBranchSourceId(null);
           }}
         />
       )}

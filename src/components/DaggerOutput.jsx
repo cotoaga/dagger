@@ -4,8 +4,9 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { formatISODateTime } from '../models/GraphModel.js'
 import { graphModel } from '../models/GraphModel.js'
+import { TokenGauge } from './TokenGauge.jsx'
 
-export function DaggerOutput({ response, displayNumber, isLoading = false, conversationId, onBranch, onContinue }) {
+export function DaggerOutput({ response, displayNumber, isLoading = false, conversationId, onBranch, onContinue, loadingStatus }) {
   const [copyStatus, setCopyStatus] = useState('copy')
   
   // Check for merge status
@@ -114,13 +115,38 @@ export function DaggerOutput({ response, displayNumber, isLoading = false, conve
     }
   }), [])
 
+  // Handler functions for new bottom button layout
+  const handleCopy = useCallback(() => {
+    if (response?.content) {
+      navigator.clipboard.writeText(response.content).then(() => {
+        setCopyStatus('📋 Copied!');
+        setTimeout(() => setCopyStatus('📋 Copy'), 2000);
+      }).catch(() => {
+        setCopyStatus('❌ Failed');
+        setTimeout(() => setCopyStatus('📋 Copy'), 2000);
+      });
+    }
+  }, [response?.content]);
+
+  const handleBranch = useCallback(() => {
+    if (onBranch && conversationId) {
+      onBranch(conversationId);
+    }
+  }, [onBranch, conversationId]);
+
+  const handleContinue = useCallback(() => {
+    if (onContinue && conversationId) {
+      onContinue(conversationId);
+    }
+  }, [onContinue, conversationId]);
+
   if (isLoading) {
     return (
       <div className="dagger-output loading">
         <div className="output-header">
           <span className="interaction-number">&gt;{displayNumber}</span>
           <div className="loading-indicator">
-            <span className="loading-text">Thinking...</span>
+            <span className="loading-text">{loadingStatus || "Processing..."}</span>
             <div className="loading-dots">
               <span>●</span>
               <span>●</span>
@@ -156,13 +182,6 @@ export function DaggerOutput({ response, displayNumber, isLoading = false, conve
               {isCollapsed ? '📖 Expand' : '📋 Collapse'}
             </button>
           )}
-          <button 
-            onClick={handleCopyToClipboard}
-            className="copy-button"
-            title="Copy response to clipboard"
-          >
-            {copyStatus}
-          </button>
         </div>
       </div>
 
@@ -186,26 +205,35 @@ export function DaggerOutput({ response, displayNumber, isLoading = false, conve
         </div>
       )}
 
-      {/* Conversation actions */}
+      {/* Bottom action buttons */}
       {response && !isLoading && (
-        <div className="conversation-actions">
-          {!isThreadMerged && onBranch && onContinue && (
-            <>
-              <button 
-                onClick={() => onBranch(conversationId)}
-                className="action-btn branch-btn"
-                title="Create a branch from this conversation"
-              >
-                🍴 Branch
-              </button>
-              <button 
-                onClick={() => onContinue(conversationId)}
-                className="action-btn continue-btn"
-                title="Continue this conversation"
-              >
-                ➡️ Continue
-              </button>
-            </>
+        <div className="response-actions-bottom">
+          <button 
+            className="action-btn copy-btn"
+            onClick={handleCopy}
+            title="Copy response to clipboard"
+          >
+            📋 Copy
+          </button>
+          
+          {!isThreadMerged && onBranch && (
+            <button 
+              className="action-btn branch-btn"
+              onClick={handleBranch}
+              title="Create branch from this conversation"
+            >
+              🌿 Branch
+            </button>
+          )}
+          
+          {!isThreadMerged && onContinue && (
+            <button 
+              className="action-btn continue-btn"
+              onClick={handleContinue}
+              title="Continue in current thread"
+            >
+              ⬇️ Continue
+            </button>
           )}
           
           {isThreadMerged && (
@@ -232,6 +260,14 @@ export function DaggerOutput({ response, displayNumber, isLoading = false, conve
           <span className="token-count">{response.totalTokens} tokens</span>
         </div>
       </div>
+      
+      {/* Token usage gauge */}
+      {conversation && (
+        <TokenGauge 
+          conversations={[conversation]}
+          className="response-gauge"
+        />
+      )}
     </div>
   )
 }

@@ -21,6 +21,17 @@ const WelcomeScreen = ({ onPersonalitySelect, availablePersonalities }) => {
     }, 1000);
   };
 
+  const handleNavigateToPromptEditor = () => {
+    // Navigate to prompt editor/creation interface
+    console.log('🍹 Navigating to Pan-Galactic-Gargle-Blaster creator');
+    
+    // For now, we'll use hash navigation - this can be enhanced based on routing setup
+    window.location.hash = '#prompts/editor';
+    
+    // Alternative: If the parent component has a way to switch views, call it
+    // if (onNavigateToEditor) onNavigateToEditor();
+  };
+
   return (
     <div className="welcome-screen">
       {/* Matrix Background */}
@@ -44,7 +55,21 @@ const WelcomeScreen = ({ onPersonalitySelect, availablePersonalities }) => {
             <h2 className="mentat-title">
               Sapho's Juice for the Smart Mentat
             </h2>
-            <p className="poison-text">Choose Your Poison! 🧠</p>
+            <div className="prompt-selection-header">
+              <h2 className="selection-title">
+                Choose your Poison 🧪 or create your own{' '}
+                <button 
+                  className="gargle-blaster-link"
+                  onClick={handleNavigateToPromptEditor}
+                  title="Create custom personality prompt"
+                >
+                  Pan-Galactic-Gargle-Blaster 🍹
+                </button>
+              </h2>
+              <p className="selection-subtitle">
+                Select a pre-configured AI personality or craft your own cognitive enhancement
+              </p>
+            </div>
           </div>
         </div>
 
@@ -62,10 +87,21 @@ const WelcomeScreen = ({ onPersonalitySelect, availablePersonalities }) => {
 
         {/* Footer */}
         <div className="welcome-footer">
-          <div className="branding">
-            <span className="hot-label">Hot 🔥 MVP</span>
-            <span className="from-label">⚡ from the 🧪 Lab</span>
-            <span className="cotoaga-brand">COTOAGA.NET</span>
+          <div className="app-footer-branding">
+            <div className="footer-main">
+              Hot 🔥 MVP ⚡ from the 🗡️ Lab{' '}
+              <a 
+                href="http://cotoaga.net" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="cotoaga-link"
+              >
+                COTOAGA.NET
+              </a>
+            </div>
+            <div className="footer-tagline">
+              Ceterum censeo, SBaaS™ – Scaling Business as a Service is the way forward to Accelerate Growth!
+            </div>
           </div>
         </div>
       </div>
