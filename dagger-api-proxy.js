@@ -51,11 +51,12 @@ app.get('/health', (req, res) => {
   })
 })
 
-// API key management
-function getApiKey() {
-  const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY
-  if (!apiKey) {
-    throw new Error('No Claude API key found. Set CLAUDE_API_KEY or ANTHROPIC_API_KEY environment variable.')
+// API key management with session support
+function getApiKey(req) {
+  // Priority 1: Session API key from request header
+  const sessionApiKey = req.headers['x-session-api-key']
+  if (sessionApiKey) {
+    return sessionApiKey
   }
   
   // Priority 2: Environment variable (for development)
