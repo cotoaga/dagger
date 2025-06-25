@@ -11,9 +11,6 @@ export function BranchMenu({ sourceConversationId, onCreateBranch, onClose, conv
   const [prompts, setPrompts] = useState([]);
   const [promptsModel] = useState(() => new PromptsModel());
 
-  // Add debugging
-  console.log('🔍 BranchMenu render - selectedType:', selectedType);
-  console.log('🔍 BranchMenu render - selectedPrompt:', selectedPrompt);
 
   useEffect(() => {
     // Load available prompts
