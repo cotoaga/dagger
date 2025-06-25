@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:proxy": "node dagger-api-proxy.js",
+    "dev:proxy": "node dagger-api-proxy-v2.js",
+    "dev:proxy:legacy": "node dagger-api-proxy.js",
     "dev:full": "concurrently --names \"PROXY,DAGGER\" --prefix-colors \"blue,green\" \"npm run dev:proxy\" \"npm run dev\"",
     "build": "vite build",
     "lint": "eslint .",
