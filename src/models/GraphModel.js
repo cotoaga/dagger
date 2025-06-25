@@ -65,7 +65,10 @@ export class GraphModel {
       depth: 0,                         // Main thread depth = 0
       
       // Status
-      status: 'active'                  // 'active', 'processing', 'complete', 'error'
+      status: 'active',                 // 'active', 'processing', 'complete', 'error'
+      
+      // Copy all additional metadata fields (systemPrompt, promptTemplate, etc.)
+      ...metadata
     };
     
     this.conversations.set(id, conversation);
@@ -265,18 +268,61 @@ export class GraphModel {
 
   /**
    * Generate hierarchical branch ID following pattern: parent.branch.0
+   * 
+   * STRATEGIC FIX: Prevents duplicate branch IDs by checking existing display numbers
+   * directly rather than just counting branches. This resolves the issue where
+   * rapid branch creation or race conditions could create duplicates like "3.1.0" 
+   * appearing twice in the graph.
    */
   generateBranchId(parentDisplayNumber) {
     // Count existing branches from this parent
-    const existingBranches = Array.from(this.conversations.values())
+    const allConversations = Array.from(this.conversations.values());
+    const existingBranches = allConversations
       .filter(conv => {
         if (!conv.parentDisplayNumber) return false;
         return conv.parentDisplayNumber === String(parentDisplayNumber);
-      })
-      .length;
+      });
     
-    const branchNumber = existingBranches + 1; // 1, 2, 3...
-    return `${parentDisplayNumber}.${branchNumber}.0`;
+    // DIAGNOSTIC: Log the branch counting process
+    console.log('🔍 BRANCH ID GENERATION DEBUG:', {
+      parentDisplayNumber,
+      totalConversations: allConversations.length,
+      existingBranchesFromParent: existingBranches.map(b => ({
+        id: b.id,
+        displayNumber: b.displayNumber,
+        parentDisplayNumber: b.parentDisplayNumber
+      })),
+      existingBranchCount: existingBranches.length
+    });
+    
+    // ROBUST SOLUTION: Find the next available branch number by checking existing display numbers
+    let branchNumber = 1;
+    let generatedId;
+    let attempts = 0;
+    const maxAttempts = 100; // Safety limit
+    
+    do {
+      generatedId = `${parentDisplayNumber}.${branchNumber}.0`;
+      const existingWithSameId = allConversations.find(conv => conv.displayNumber === generatedId);
+      
+      if (!existingWithSameId) {
+        // Found a unique ID
+        break;
+      }
+      
+      console.warn(`⚠️ Branch ID ${generatedId} already exists, trying next number...`);
+      branchNumber++;
+      attempts++;
+    } while (attempts < maxAttempts);
+    
+    if (attempts >= maxAttempts) {
+      console.error('❌ FAILED TO GENERATE UNIQUE BRANCH ID after', maxAttempts, 'attempts');
+      // Fallback: Add timestamp to ensure uniqueness
+      generatedId = `${parentDisplayNumber}.${branchNumber}.${Date.now()}`;
+    }
+    
+    console.log('✅ Generated unique branch ID:', generatedId, `(attempt ${attempts + 1})`);
+    return generatedId;
   }
 
   /**

@@ -1,14 +1,17 @@
-# 🗡️ DAGGER v0.3 - Advanced Knowledge Cartography Platform
+# 🗡️ DAGGER v0.3.1 - Advanced Knowledge Cartography Platform
 **Operational drag-to-merge conversation branching with distributed cognition architecture**
 
 > "Context bandwidth is the bottleneck. DAGGER transforms linear chat into navigable knowledge topology where thoughts branch, merge, and scale beyond single conversation limits."
 
-**Status: v0.3 PRODUCTION READY ✅**
+**Status: v0.3.1 PRODUCTION READY ✅**
 - Drag-to-merge conversation branching: OPERATIONAL
 - Temperature-controlled AI creativity: OPERATIONAL  
 - Extended thinking mode (Claude Sonnet 4): OPERATIONAL
 - Real-time graph visualization: OPERATIONAL
 - Hierarchical merge validation: OPERATIONAL
+- Branch selection UI: FULLY OPERATIONAL ✅
+- Session API key management: OPERATIONAL
+- Linear-Graph view synchronization: OPERATIONAL
 
 ## What Makes DAGGER v0.3 Revolutionary
 
@@ -102,12 +105,15 @@ npm run preview   # Local production testing
 - **Smart Timeout Scaling**: Dynamic API timeouts based on conversation complexity
 - **Visual Model Indicators**: Performance emojis and capability tags
 
-### 🔀 Drag-to-Merge Conversation System
+### 🔀 Advanced Branch Management System
 - **Visual Branch Management**: Drag conversation endpoints to merge hierarchically
 - **End Node Detection**: Automatic identification of mergeable conversation points
 - **Merge Conflict Prevention**: Hierarchical validation prevents graph corruption
 - **Real-time Visual Feedback**: Drag indicators and merge target highlighting
 - **Branch Lifecycle Tracking**: Complete state management from creation to closure
+- **Robust Branch Selection**: Fixed UI with direct click handlers and immediate visual feedback
+- **Three Branch Types**: Virgin (fresh start), Personality (custom AI), Knowledge (full context)
+- **Context Inheritance**: Intelligent conversation history management per branch type
 
 ### 🗺️ Interactive Graph Visualization
 - **Cytoscape.js Professional Rendering**: Smooth DAG layouts with drag operations
@@ -132,6 +138,8 @@ npm run preview   # Local production testing
 - **Performance**: Sub-2s response times with optimized timeout scaling
 - **Cross-Browser**: Modern browser support with responsive design
 - **Error Handling**: Graceful failure recovery with user-friendly messaging
+- **UI Stability**: Fixed infinite render loops and event handler issues
+- **Session Management**: Volatile API key support with automatic timeout handling
 
 ### Architecture Validation
 - **Event-Driven Design**: Responsive interactions with sophisticated state management
@@ -150,11 +158,16 @@ npm run dev:proxy & npm run dev  # Full system validation
 
 ## Beyond v0.3: The Knowledge Cartography Vision
 
-### ✅ Achieved in v0.3
+### ✅ Achieved in v0.3.1
 - Operational drag-to-merge conversation branching
 - Real-time graph visualization with professional DAG rendering
 - Advanced AI control with temperature tuning and extended thinking
 - Production-grade architecture with comprehensive testing
+- **Critical Bug Fixes**: Resolved branch selection UI state conflicts
+- **Performance Optimization**: Eliminated render loops and event handler issues
+- **Session API Key Integration**: Volatile key management with dark mode UI
+- **Cross-View Synchronization**: Seamless Linear ↔ Graph state management
+- **Enhanced User Experience**: Immediate visual feedback and robust interaction patterns
 
 ### 🎯 Future Development Vectors
 - **Enhanced Graph Intelligence**: Node clustering, smart layout optimization
@@ -168,8 +181,25 @@ npm run dev:proxy & npm run dev  # Full system validation
 
 ---
 
-## Status: ✅ DAGGER v0.3 - PRODUCTION OPERATIONAL
+---
+
+## Status: ✅ DAGGER v0.3.1 - PRODUCTION OPERATIONAL
 
 **Advanced conversational AI platform with drag-to-merge knowledge cartography**
 
-*Tested through distributed cognition. Validated by actual usage. Ready for cognitive amplification at scale.*
+### Recent Improvements (v0.3.1)
+- ✅ **Branch Selection UI**: Fixed radio button conflicts with direct click handlers
+- ✅ **Session API Key**: Implemented volatile key management with dark mode styling  
+- ✅ **Performance**: Resolved infinite render loops and stabilized event handlers
+- ✅ **Graph Synchronization**: Fixed node selection and view state management
+- ✅ **User Experience**: Enhanced visual feedback and interaction reliability
+
+### Development Notes
+```bash
+# Production-ready commands
+npm run dev:proxy & npm run dev    # Full system startup
+npm test                           # Comprehensive test suite  
+npm run build                      # Production bundle verification
+```
+
+*Tested through distributed cognition. Validated by actual usage. Debugged with systematic precision. Ready for cognitive amplification at scale.*

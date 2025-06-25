@@ -126,13 +126,20 @@ export function GraphView({ conversations, currentConversationId, onConversation
         const parentConv = conversations.find(c => String(c.displayNumber) === parentDisplayNum);
         
         if (parentConv) {
+          // Determine edge styling based on branch type
+          let edgeClasses = 'branch-edge';
+          if (conv.branchType) {
+            edgeClasses += ` branch-${conv.branchType}-edge`;
+          }
+          
           edges.push({
             data: {
               id: `branch-${parentConv.id}-${conv.id}`,
               source: parentConv.id,
-              target: conv.id
+              target: conv.id,
+              branchType: conv.branchType // Store for debugging
             },
-            classes: 'branch-edge'
+            classes: edgeClasses
           });
         }
       } else {
@@ -454,30 +461,7 @@ export function GraphView({ conversations, currentConversationId, onConversation
         }
       },
 
-      // Branch nodes - different colors by type
-      {
-        selector: 'node.branch-virgin',
-        style: {
-          'background-color': '#7c3aed',
-          'border-color': '#8b5cf6'
-        }
-      },
-
-      {
-        selector: 'node.branch-personality',
-        style: {
-          'background-color': '#2563eb',
-          'border-color': '#3b82f6'
-        }
-      },
-
-      {
-        selector: 'node.branch-knowledge',
-        style: {
-          'background-color': '#059669',
-          'border-color': '#10b981'
-        }
-      },
+      // Branch type styling removed - edge styling indicates branch type instead
 
       // Dimmed nodes (when something else is selected)
       {
@@ -502,7 +486,7 @@ export function GraphView({ conversations, currentConversationId, onConversation
         }
       },
 
-      // Branch edges - subtle gray dashed lines
+      // Branch edges - subtle gray dashed lines (default)
       {
         selector: 'edge.branch-edge',
         style: {
@@ -513,6 +497,48 @@ export function GraphView({ conversations, currentConversationId, onConversation
           'curve-style': 'bezier',
           'line-style': 'dashed',
           'opacity': 0.6
+        }
+      },
+
+      // Virgin branch edges - dotted lines
+      {
+        selector: 'edge.branch-virgin-edge',
+        style: {
+          'width': 2,
+          'line-color': '#7c3aed', // purple-600
+          'target-arrow-color': '#7c3aed',
+          'target-arrow-shape': 'triangle',
+          'curve-style': 'bezier',
+          'line-style': 'dotted',
+          'opacity': 0.8
+        }
+      },
+
+      // Personality branch edges - dashed lines
+      {
+        selector: 'edge.branch-personality-edge',
+        style: {
+          'width': 2,
+          'line-color': '#2563eb', // blue-600
+          'target-arrow-color': '#2563eb',
+          'target-arrow-shape': 'triangle',
+          'curve-style': 'bezier',
+          'line-style': 'dashed',
+          'opacity': 0.8
+        }
+      },
+
+      // Knowledge branch edges - solid lines (like main thread)
+      {
+        selector: 'edge.branch-knowledge-edge',
+        style: {
+          'width': 2,
+          'line-color': '#059669', // emerald-600
+          'target-arrow-color': '#059669',
+          'target-arrow-shape': 'triangle',
+          'curve-style': 'bezier',
+          'line-style': 'solid',
+          'opacity': 0.8
         }
       },
 

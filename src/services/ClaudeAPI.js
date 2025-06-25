@@ -140,7 +140,7 @@ class ClaudeAPIClass {
         MessageFormatter.debugMessages(messages, options.context);
       }
       
-      // Make API request
+      // CRITICAL DEBUG: Log the exact API payload
       const requestBody = {
         model: model,
         max_tokens: options.maxTokens || options.max_tokens || 4000,
@@ -148,6 +148,13 @@ class ClaudeAPIClass {
         messages: messages, // ✅ Properly formatted by single formatter
         stream: false
       };
+      
+      console.log('🚨 EXACT API PAYLOAD BEING SENT:');
+      console.log('🚨 Request URL:', import.meta.env.DEV ? this.baseURL : 'production URL');
+      console.log('🚨 Request Body:', JSON.stringify(requestBody, null, 2));
+      console.log('🚨 Message count:', messages.length);
+      console.log('🚨 First message role:', messages[0]?.role);
+      console.log('🚨 System message present:', messages.some(m => m.role === 'system'));
       
       // Build headers with extended thinking support
       const headers = {

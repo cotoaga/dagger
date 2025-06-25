@@ -68,7 +68,9 @@ function App() {
     return saved ? parseFloat(saved) : 0.7 // Default Claude temperature
   })
   const [extendedThinking, setExtendedThinking] = useState(false)
-  const [currentView, setCurrentView] = useState('linear') // 'linear' | 'graph' | 'prompts'
+  const [currentView, setCurrentView] = useState(() => {
+    return localStorage.getItem('dagger-view') || 'linear'
+  }) // 'linear' | 'graph' | 'prompts'
   const [showBranchMenu, setShowBranchMenu] = useState(false)
   const [branchSourceId, setBranchSourceId] = useState(null)
   const [currentBranchContext, setCurrentBranchContext] = useState(null)
@@ -403,8 +405,20 @@ function App() {
    * UNIFIED METHOD using MessageFormatter - single source of truth
    */
   const handleNewConversation = useCallback(async (inputData) => {
+    console.log('\n🔍 === EMERGENCY DIAGNOSTIC: Starting message send ===');
+    console.log('🔍 Input data:', inputData);
+    
     const prompt = inputData.content;
+    console.log('🔍 Extracted prompt:', prompt);
+    console.log('🔍 Current conversations:', conversations?.length || 0);
+    console.log('🔍 Current conversation ID:', currentConversationId);
+    console.log('🔍 Current view:', currentView);
+    console.log('🔍 Processing state:', isProcessing);
+    console.log('🔍 Current branch context:', currentBranchContext);
+    console.log('🔍 Session API key configured:', !!sessionApiKey);
+    
     if (!prompt.trim() || isProcessing) {
+      console.log('❌ EARLY EXIT: Empty prompt or already processing');
       return;
     }
     
@@ -412,12 +426,16 @@ function App() {
     setCurrentStatus(getRandomHonestStatus());
     
     try {
+      console.log('🔍 Step 1: Setting up conversation...');
       // Create new conversation in GraphModel
       let newConversation;
       let threadId = 'main';
       let branchContext = null;
       
+      console.log('🔍 Step 2: Creating conversation in GraphModel...');
+      
       if (currentBranchContext) {
+        console.log('🔍 Branch context detected:', currentBranchContext);
         threadId = `branch-${currentBranchContext}`;
         branchContext = currentBranchContext;
         newConversation = graphModel.addConversationToBranch(
@@ -426,30 +444,50 @@ function App() {
           '', 
           { status: 'processing', threadId: threadId }
         );
+        console.log('🔍 Branch conversation created:', newConversation?.id);
       } else {
+        console.log('🔍 Creating main thread conversation...');
         newConversation = graphModel.addConversation(
           prompt, 
           '', 
           { status: 'processing', threadId: 'main' }
         );
+        console.log('🔍 Main conversation created:', newConversation?.id);
       }
       
+      if (!newConversation) {
+        throw new Error('Failed to create conversation in GraphModel');
+      }
+      
+      console.log('🔍 Step 3: Updating React state...');
       setConversations(graphModel.getAllConversationsWithBranches());
       setCurrentConversationId(newConversation.id);
+      console.log('🔍 React state updated, new conversation ID:', newConversation.id);
       
       // Build conversation history based on branch type
+      console.log('🔍 Step 4: Building conversation history...');
       let conversationHistory = [];
       let systemPrompt = null;
       
       if (currentBranchContext) {
+        console.log('🔍 Building branch conversation history...');
         const currentBranch = graphModel.getConversation(currentConversationId);
+        console.log('🔍 Current branch:', currentBranch);
         const branchType = currentBranch?.branchType;
+        console.log('🔍 Branch type:', branchType);
         
         console.log('📚 Context inheritance debug:', {
           threadId,
           branchContext,
           branchType,
-          currentConversationId
+          currentConversationId,
+          branchData: currentBranch ? {
+            id: currentBranch.id,
+            displayNumber: currentBranch.displayNumber,
+            branchType: currentBranch.branchType,
+            systemPrompt: currentBranch.systemPrompt ? 'EXISTS' : 'MISSING',
+            promptTemplate: currentBranch.promptTemplate
+          } : 'NO BRANCH FOUND'
         });
         
         if (branchType === 'virgin') {
@@ -458,14 +496,12 @@ function App() {
           console.log('🌱 Virgin branch: starting fresh with no history');
           
         } else if (branchType === 'personality') {
-          // Personality branch: no history but with system prompt
+          // Personality branch: no history but with system prompt from stored template
           conversationHistory = [];
-          const promptTemplateId = currentBranch?.promptTemplate?.id || null;
-          if (promptTemplateId) {
-            const promptTemplate = promptsModel.getPrompt(promptTemplateId);
-            systemPrompt = promptTemplate?.content || null;
-            console.log('🎭 Personality branch: fresh start with custom prompt');
-          }
+          systemPrompt = currentBranch?.systemPrompt || null;
+          console.log('🎭 Personality branch: fresh start with custom system prompt');
+          console.log('🎭 System prompt loaded:', systemPrompt ? `"${systemPrompt.substring(0, 100)}..."` : 'MISSING');
+          console.log('🎭 Template info:', currentBranch?.promptTemplate?.name || 'No template name');
           
         } else if (branchType === 'knowledge') {
           // Knowledge branch: full context inheritance
@@ -489,12 +525,18 @@ function App() {
         }
       } else {
         // Main thread: use full context
+        console.log('🔍 Building main thread conversation history...');
         const allConversations = graphModel.getAllConversationsWithBranches();
+        console.log('🔍 All conversations count:', allConversations?.length || 0);
+        console.log('🔍 All conversations:', allConversations);
+        
         conversationHistory = MessageFormatter.extractConversationHistory(
           allConversations, 
           threadId, 
           branchContext
         );
+        console.log('🔍 Extracted conversation history:', conversationHistory);
+        console.log('🔍 History length:', conversationHistory?.length || 0);
       }
       
       // Determine model to use
@@ -506,7 +548,27 @@ function App() {
         }
       }
       
+      console.log(`🔍 Step 5: Preparing API call...`);
       console.log(`🧠 UNIFIED: ${conversationHistory.length} messages, context: ${threadId}`);
+      
+      // EMERGENCY DEBUG: Log complete API preparation
+      console.log('🚨 === COMPLETE API CALL DEBUG ===');
+      console.log('🚨 conversationHistory:', conversationHistory);
+      console.log('🚨 prompt:', prompt);
+      console.log('🚨 systemPrompt:', systemPrompt);
+      console.log('🚨 modelToUse:', modelToUse);
+      console.log('🚨 temperature:', temperature);
+      console.log('🚨 sessionApiKey available:', !!sessionApiKey);
+      console.log('🚨 Full API options:', {
+        temperature: temperature,
+        model: modelToUse,
+        systemPrompt: systemPrompt,
+        context: threadId,
+        debug: true,
+        sessionApiKey: sessionApiKey
+      });
+      
+      console.log('🔍 Step 6: Making API call to ClaudeAPI.sendMessage...');
       
       // Single API call for ALL conversation types using MessageFormatter
       const response = await ClaudeAPI.sendMessage(
@@ -517,10 +579,18 @@ function App() {
           model: modelToUse,
           systemPrompt: systemPrompt,
           context: threadId,
-          debug: process.env.NODE_ENV === 'development',
+          debug: true, // Force debug for emergency diagnostics
           sessionApiKey: sessionApiKey // Pass session API key
         }
       );
+      
+      console.log('🔍 Step 7: API call completed successfully');
+      console.log('🔍 Response content length:', response?.content?.length || 0);
+      console.log('🔍 Response metadata:', {
+        processingTime: response?.processingTime,
+        model: response?.model,
+        usage: response?.usage
+      });
       
       // Store conversation with enhanced token data
       graphModel.updateConversation(newConversation.id, {
@@ -537,14 +607,43 @@ function App() {
       console.log(`✅ UNIFIED: Conversation completed for ${threadId}`);
       
     } catch (error) {
-      console.error('❌ UNIFIED Conversation Error:', error);
+      console.error('\n🚨 === EMERGENCY ERROR DIAGNOSTIC ===');
+      console.error('🚨 Error occurred at step: Unknown (see previous logs)');
+      console.error('🚨 Error message:', error.message);
+      console.error('🚨 Error stack:', error.stack);
+      console.error('🚨 Error name:', error.name);
+      console.error('🚨 Full error object:', error);
+      console.error('🚨 newConversation exists:', !!newConversation);
+      console.error('🚨 newConversation ID:', newConversation?.id);
+      console.error('🚨 Current state at error:', {
+        conversationsCount: conversations?.length,
+        currentConversationId,
+        currentBranchContext,
+        isProcessing,
+        sessionApiKeyConfigured: !!sessionApiKey
+      });
       
-      if (newConversation) {
+      if (newConversation && newConversation.id) {
+        console.log('🔍 Step 8: Updating conversation with error info...');
+        // Update the conversation with error information
         graphModel.updateConversation(newConversation.id, {
           response: `Error: ${error.message}`,
           status: 'error'
         });
         setConversations(graphModel.getAllConversationsWithBranches());
+        console.log('💾 Conversation marked as error:', newConversation.id);
+      } else {
+        console.warn('⚠️ Error occurred but no conversation to update - partial failure');
+        // Still refresh conversations in case of partial creation
+        setConversations(graphModel.getAllConversationsWithBranches());
+      }
+      
+      // Show user-friendly error for personality branches
+      if (currentBranchContext) {
+        const currentBranch = graphModel.getConversation(currentConversationId);
+        if (currentBranch?.branchType === 'personality') {
+          alert(`Personality branch error: ${error.message}. Please try again.`);
+        }
       }
     } finally {
       setIsProcessing(false);
@@ -733,6 +832,21 @@ function App() {
         parentId: sourceId
       });
       
+      // TDD DIAGNOSTIC: Knowledge branch context inheritance
+      if (branchType === 'knowledge') {
+        console.log('\n🔍 === TDD DIAGNOSTIC: Knowledge Branch Context Building ===');
+        console.log('🔍 KNOWLEDGE: Source conversation:', sourceConversation);
+        const allConversations = graphModel.getAllConversationsWithBranches();
+        console.log('🔍 KNOWLEDGE: All conversations count:', allConversations.length);
+        console.log('🔍 KNOWLEDGE: All conversation IDs:', allConversations.map(c => ({ id: c.id, displayNumber: c.displayNumber, parentId: c.parentId })));
+        
+        // Test conversation history extraction
+        const testHistory = MessageFormatter.extractConversationHistory(allConversations, newBranch.id);
+        console.log('🔍 KNOWLEDGE: Extracted history length:', testHistory.length);
+        console.log('🔍 KNOWLEDGE: History preview:', testHistory.slice(0, 2));
+        console.log('🔍 KNOWLEDGE: Expected length should be >= 2 for knowledge branches');
+      }
+      
       // Create dedicated thread for this branch
       const branchThreadId = ClaudeAPI.createBranchThread(newBranch.id);
       
@@ -743,17 +857,41 @@ function App() {
         branchType: branchType  // Store branch type for context inheritance
       };
       
+      console.log('🔍 TDD DIAGNOSTIC: Storing branch metadata:', updateData);
+      console.log('🔍 TDD DIAGNOSTIC: Branch type being stored:', branchType);
+      
       // If we have a prompt template, store it with the branch
       if (promptTemplate) {
         updateData.promptTemplate = promptTemplate;
-        // Pre-populate the prompt as the first message for personality branches
+        // For personality branches, store template content as system prompt
         if (branchType === 'personality') {
-          newBranch.prompt = promptTemplate.content;
-          updateData.prompt = promptTemplate.content;
+          updateData.systemPrompt = promptTemplate.content;
+          console.log('🎭 Stored personality template as system prompt:', promptTemplate.name);
         }
       }
       
       graphModel.updateConversation(newBranch.id, updateData);
+      
+      // VERIFY: Check what was actually stored
+      console.log('🚨 BRANCH STORAGE VERIFICATION:');
+      const verifyBranch = graphModel.getConversation(newBranch.id);
+      console.log('🚨 Stored branch data:', {
+        id: verifyBranch.id,
+        displayNumber: verifyBranch.displayNumber,
+        branchType: verifyBranch.branchType,
+        systemPrompt: verifyBranch.systemPrompt ? `"${verifyBranch.systemPrompt.substring(0, 50)}..."` : 'NOT STORED',
+        promptTemplate: verifyBranch.promptTemplate ? verifyBranch.promptTemplate.name : 'NO TEMPLATE'
+      });
+      
+      // TDD DIAGNOSTIC: System message vs user content separation
+      if (branchType === 'personality' && promptTemplate) {
+        console.log('\n🔍 === TDD DIAGNOSTIC: System Message Separation ===');
+        console.log('🔍 SYSTEM: System message content:', verifyBranch.systemPrompt?.substring(0, 100) + '...');
+        console.log('🔍 SYSTEM: User prompt content (should be injector):', verifyBranch.input?.substring(0, 100) + '...');
+        console.log('🔍 SYSTEM: Are they the same?', verifyBranch.systemPrompt === verifyBranch.input);
+        console.log('🔍 SYSTEM: System message defined?', !!verifyBranch.systemPrompt);
+        console.log('🔍 SYSTEM: User input defined?', !!verifyBranch.input);
+      }
       
       setConversations(graphModel.getAllConversationsWithBranches());
       setCurrentConversationId(newBranch.id);
@@ -824,7 +962,11 @@ This personality framework helps you understand my thinking patterns and communi
   // Handle personality selection
   const handlePersonalitySelect = useCallback(async (personalityId) => {
     try {
-      console.log('🎭 Personality selected:', personalityId);
+      console.log('\n🔍 === TDD DIAGNOSTIC: Starting personality initialization ===');
+      console.log('🔍 INIT: Personality ID:', personalityId);
+      console.log('🔍 INIT: Existing conversations before:', conversations.length);
+      console.log('🔍 INIT: Current conversation IDs:', conversations.map(c => c.displayNumber));
+      
       setSelectedPersonality(personalityId);
       
       // Get personality template
@@ -832,7 +974,11 @@ This personality framework helps you understand my thinking patterns and communi
       const template = getPersonalityTemplate(personalityId);
       const fullPrompt = `${injector}\n\n${template}`;
       
-      console.log('🔄 Initializing personality with prompt length:', fullPrompt.length);
+      console.log('🔍 INIT: Injector content:', injector);
+      console.log('🔍 INIT: Template content:', template.substring(0, 100) + '...');
+      console.log('🔍 INIT: Full prompt length:', fullPrompt.length);
+      console.log('🔍 INIT: Full prompt preview:', fullPrompt.substring(0, 200) + '...');
+      
       setIsProcessing(true);
       setCurrentStatus(getRandomHonestStatus());
       
@@ -848,7 +994,11 @@ This personality framework helps you understand my thinking patterns and communi
         }
       );
       
-      console.log('✅ Got personality response:', response);
+      console.log('🔍 INIT: Got personality response:', response.content.substring(0, 100) + '...');
+      
+      // CRITICAL TDD DIAGNOSTIC: Check for auto-duplication
+      console.log('🔍 INIT: About to create conversation 0');
+      console.log('🔍 INIT: Conversations before creation:', graphModel.getAllConversations().length);
       
       // Create initial conversation with enhanced token data
       const newConversation = graphModel.addConversation(
@@ -865,10 +1015,15 @@ This personality framework helps you understand my thinking patterns and communi
         }
       );
       
+      console.log('🔍 INIT: Created conversation with ID:', newConversation.id);
+      console.log('🔍 INIT: Display number:', newConversation.displayNumber);
+      
       setConversations(graphModel.getAllConversationsWithBranches());
       setCurrentConversationId(newConversation.id);
       
-      console.log('✅ Personality initialized successfully');
+      console.log('🔍 INIT: Conversations after personality setup:', graphModel.getAllConversations().length);
+      console.log('🔍 INIT: Final conversation IDs:', graphModel.getAllConversations().map(c => c.displayNumber));
+      console.log('🔍 INIT: Any auto-conversation creation happening?');
       
       // Hide welcome screen after successful injection
       setTimeout(() => {

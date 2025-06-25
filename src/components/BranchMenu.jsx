@@ -107,24 +107,31 @@ export function BranchMenu({ sourceConversationId, onCreateBranch, onClose, conv
                 <h5>⭐ Starred Templates</h5>
                 <div className="prompt-options">
                   {starredPrompts.map(prompt => (
-                    <label key={prompt.id} className={selectedPrompt === prompt.id ? 'selected' : ''}>
-                      <input 
-                        type="radio" 
-                        value={prompt.id}
-                        checked={selectedPrompt === prompt.id}
-                        onChange={e => setSelectedPrompt(e.target.value)}
-                      />
-                      <div className="prompt-option">
-                        <div className="prompt-header">
-                          <strong>{prompt.name}</strong>
-                          <span className="prompt-category">{prompt.category}</span>
-                        </div>
-                        <p className="prompt-preview">
-                          {prompt.content.slice(0, 100)}
-                          {prompt.content.length > 100 && '...'}
-                        </p>
+                    <div 
+                      key={prompt.id} 
+                      className={`prompt-option ${selectedPrompt === prompt.id ? 'selected' : ''}`}
+                      onClick={() => {
+                        console.log('📝 Starred template selected:', prompt.id, prompt.name);
+                        setSelectedPrompt(prompt.id);
+                      }}
+                      style={{
+                        border: selectedPrompt === prompt.id ? '3px solid #3b82f6' : '2px solid #4b5563',
+                        borderRadius: '8px',
+                        padding: '12px',
+                        margin: '8px 0',
+                        cursor: 'pointer',
+                        backgroundColor: selectedPrompt === prompt.id ? 'rgba(59, 130, 246, 0.1)' : 'transparent'
+                      }}
+                    >
+                      <div className="prompt-header">
+                        <strong>{prompt.name}</strong>
+                        <span className="prompt-category">{prompt.category}</span>
                       </div>
-                    </label>
+                      <p style={{ margin: '4px 0 0 0', color: '#9ca3af' }}>
+                        {prompt.content.slice(0, 100)}
+                        {prompt.content.length > 100 && '...'}
+                      </p>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -135,24 +142,31 @@ export function BranchMenu({ sourceConversationId, onCreateBranch, onClose, conv
                 <h5>🎭 All Personality Templates</h5>
                 <div className="prompt-options">
                   {personalityPrompts.map(prompt => (
-                    <label key={prompt.id} className={selectedPrompt === prompt.id ? 'selected' : ''}>
-                      <input 
-                        type="radio" 
-                        value={prompt.id}
-                        checked={selectedPrompt === prompt.id}
-                        onChange={e => setSelectedPrompt(e.target.value)}
-                      />
-                      <div className="prompt-option">
-                        <div className="prompt-header">
-                          <strong>{prompt.name}</strong>
-                          {prompt.starred && <span className="star-indicator">⭐</span>}
-                        </div>
-                        <p className="prompt-preview">
-                          {prompt.content.slice(0, 100)}
-                          {prompt.content.length > 100 && '...'}
-                        </p>
+                    <div 
+                      key={prompt.id} 
+                      className={`prompt-option ${selectedPrompt === prompt.id ? 'selected' : ''}`}
+                      onClick={() => {
+                        console.log('📝 Template selected:', prompt.id, prompt.name);
+                        setSelectedPrompt(prompt.id);
+                      }}
+                      style={{
+                        border: selectedPrompt === prompt.id ? '3px solid #3b82f6' : '2px solid #4b5563',
+                        borderRadius: '8px',
+                        padding: '12px',
+                        margin: '8px 0',
+                        cursor: 'pointer',
+                        backgroundColor: selectedPrompt === prompt.id ? 'rgba(59, 130, 246, 0.1)' : 'transparent'
+                      }}
+                    >
+                      <div className="prompt-header">
+                        <strong>{prompt.name}</strong>
+                        {prompt.starred && <span className="star-indicator">⭐</span>}
                       </div>
-                    </label>
+                      <p style={{ margin: '4px 0 0 0', color: '#9ca3af' }}>
+                        {prompt.content.slice(0, 100)}
+                        {prompt.content.length > 100 && '...'}
+                      </p>
+                    </div>
                   ))}
                 </div>
               </div>
