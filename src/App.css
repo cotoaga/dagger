@@ -1,3 +1,34 @@
+/* CSS Variables for Theming */
+:root {
+  /* Default to dark theme */
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --bg-accent: rgba(56, 139, 253, 0.1);
+  --text-primary: #f0f6fc;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+  --border-color: #30363d;
+  --accent-color: #58a6ff;
+  --error-color: #f85149;
+  --error-bg: rgba(248, 81, 73, 0.1);
+}
+
+/* Light theme variables */
+.app.light {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f6f8fa;
+  --bg-tertiary: #e1e4e8;
+  --bg-accent: rgba(59, 130, 246, 0.1);
+  --text-primary: #24292f;
+  --text-secondary: #57606a;
+  --text-muted: #6e7781;
+  --border-color: #d0d7de;
+  --accent-color: #0969da;
+  --error-color: #cf222e;
+  --error-bg: rgba(207, 34, 46, 0.1);
+}
+
 #root {
   max-width: none;
   margin: 0 !important;
@@ -9,6 +40,177 @@
 
 * {
   box-sizing: border-box;
+}
+
+/* Session API Key Input Screen */
+.session-api-key-screen {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: #0d1117; /* Dark background by default */
+  padding: 20px;
+  color: #f0f6fc; /* Light text by default */
+}
+
+.api-key-content {
+  background: #161b22; /* Dark secondary background */
+  border-radius: 12px;
+  padding: 40px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  max-width: 500px;
+  width: 100%;
+  text-align: center;
+  color: #f0f6fc;
+}
+
+.dagger-logo {
+  font-size: 3rem;
+  margin-bottom: 20px;
+}
+
+.session-api-key-screen h2 {
+  color: #f0f6fc;
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+}
+
+.security-notice {
+  background: rgba(56, 139, 253, 0.1);
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 15px;
+  margin: 20px 0;
+  font-size: 0.9rem;
+  text-align: left;
+  color: #f0f6fc;
+}
+
+.api-key-form {
+  margin: 30px 0;
+}
+
+.input-group {
+  text-align: left;
+  margin-bottom: 20px;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #f0f6fc;
+}
+
+.api-key-input {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #30363d;
+  border-radius: 8px;
+  font-size: 16px;
+  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+  background: #0d1117;
+  color: #f0f6fc;
+  transition: border-color 0.2s;
+}
+
+.api-key-input:focus {
+  outline: none;
+  border-color: #58a6ff;
+}
+
+.api-key-input.error {
+  border-color: #f85149;
+}
+
+.error-message {
+  color: #f85149;
+  background: rgba(248, 81, 73, 0.1);
+  padding: 10px;
+  border-radius: 6px;
+  margin: 10px 0;
+  font-size: 0.9rem;
+}
+
+.submit-button {
+  background: #58a6ff;
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  width: 100%;
+}
+
+.submit-button:hover:not(:disabled) {
+  background: #1f6feb;
+}
+
+.submit-button:disabled {
+  background: #6e7681;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.help-section {
+  margin: 30px 0;
+  text-align: left;
+}
+
+.help-toggle {
+  background: none;
+  border: none;
+  color: #58a6ff;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.help-content {
+  margin-top: 15px;
+  padding: 15px;
+  background: rgba(56, 139, 253, 0.1);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: #f0f6fc;
+}
+
+.help-content ol {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+
+.help-content a {
+  color: #58a6ff;
+  text-decoration: none;
+}
+
+.help-content a:hover {
+  text-decoration: underline;
+}
+
+.security-reminder {
+  margin-top: 15px;
+  font-style: italic;
+  color: #6e7681;
+}
+
+.session-info {
+  margin-top: 20px;
+  color: #6e7681;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.session-indicator {
+  margin-left: 10px;
+  color: #6e7681;
+  font-size: 0.8rem;
+  font-style: italic;
 }
 
 /* Configuration Loading Screen (simplified) */
@@ -1148,25 +1350,17 @@ html.dark {
   transition: all 0.2s;
 }
 
-.branch-types label.selected .branch-option {
-  background: #f0f9ff;
-  border-color: #f59e0b;
-}
-
-.app.dark .branch-types label.selected .branch-option {
-  background: #1a202c;
-  border-color: #f59e0b;
-}
-
 .branch-option {
   border: 2px solid #e5e7eb;
   border-radius: 8px;
   padding: 12px;
   transition: all 0.2s;
+  background: transparent;
 }
 
 .app.dark .branch-option {
   border-color: #4a5568;
+  background: transparent;
 }
 
 .branch-option:hover {
@@ -1177,6 +1371,17 @@ html.dark {
 .app.dark .branch-option:hover {
   border-color: #63b3ed;
   background: #1a202c;
+}
+
+/* Selected state overrides hover with higher specificity */
+.branch-types label.selected .branch-option {
+  background: #f0f9ff !important;
+  border-color: #f59e0b !important;
+}
+
+.app.dark .branch-types label.selected .branch-option {
+  background: #1a202c !important;
+  border-color: #f59e0b !important;
 }
 
 .branch-header {

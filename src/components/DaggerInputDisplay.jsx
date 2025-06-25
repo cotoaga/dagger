@@ -44,25 +44,6 @@ export function DaggerInputDisplay({ interaction, onCopy, onFork, showActions = 
               {isCollapsed ? '📖 Expand' : '📋 Collapse'}
             </button>
           )}
-          {showActions && (
-            <>
-              <button 
-                className="action-btn copy-btn"
-                onClick={() => onCopy && onCopy(interaction)}
-                title="Copy conversation"
-              >
-                📋 Copy
-              </button>
-              
-              <button 
-                className="action-btn fork-btn"
-                onClick={() => onFork && onFork(interaction.id)}
-                title="Create branch from this conversation"
-              >
-                Fork ➡️
-              </button>
-            </>
-          )}
         </div>
       </div>
       <div 

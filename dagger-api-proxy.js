@@ -35,7 +35,8 @@ app.use(cors({
     'Authorization',
     'x-api-key',
     'anthropic-version',
-    'anthropic-beta'
+    'anthropic-beta',
+    'x-session-api-key'  // ADD THIS LINE - allows session API key header
   ],
   credentials: true
 }))
@@ -56,7 +57,15 @@ function getApiKey() {
   if (!apiKey) {
     throw new Error('No Claude API key found. Set CLAUDE_API_KEY or ANTHROPIC_API_KEY environment variable.')
   }
-  return apiKey
+  
+  // Priority 2: Environment variable (for development)
+  const envApiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY
+  if (envApiKey) {
+    return envApiKey
+  }
+  
+  // No API key found
+  throw new Error('No Claude API key found. Provide via x-session-api-key header or environment variable.')
 }
 
 /**
@@ -163,10 +172,10 @@ app.post('/api/claude', async (req, res) => {
     
     console.log('✅ MessageFormatter validation passed')
     
-    // Get API key
+    // Get API key from session or environment
     let apiKey
     try {
-      apiKey = getApiKey()
+      apiKey = getApiKey(req) // Pass req to get session key
     } catch (error) {
       console.error('❌ API key error:', error.message)
       return res.status(500).json({
@@ -267,10 +276,10 @@ app.post('/api/chat', async (req, res) => {
       })
     }
     
-    // Get API key
+    // Get API key from session or environment
     let apiKey
     try {
-      apiKey = getApiKey()
+      apiKey = getApiKey(req) // Pass req to get session key
     } catch (error) {
       console.error('❌ API key error:', error.message)
       return res.status(500).json({

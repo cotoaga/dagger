@@ -4,12 +4,36 @@ import { MessageFormatter } from './MessageFormatter.js';
 class ClaudeAPIClass {
   constructor() {
     this.apiKey = localStorage.getItem('claude-api-key');
+    this.sessionApiKey = null;  // Will be set when session key is provided
     this.baseURL = import.meta.env.DEV 
       ? 'http://localhost:3001/api/claude'
       : 'https://api.anthropic.com/v1/messages';
     this.conversationThreads = new Map(); // Thread ID -> message history
     this.model = 'claude-sonnet-4-20250514';
     this.extendedThinking = false;
+  }
+
+  /**
+   * Set session API key for this instance
+   */
+  setSessionApiKey(sessionApiKey) {
+    this.sessionApiKey = sessionApiKey;
+    console.log('🔑 Session API key configured for ClaudeAPI instance');
+  }
+
+  /**
+   * Get the best available API key (session preferred)
+   */
+  getApiKey() {
+    if (this.sessionApiKey && this.sessionApiKey.trim()) {
+      return this.sessionApiKey;
+    }
+    
+    if (this.apiKey && this.apiKey.trim()) {
+      return this.apiKey;
+    }
+    
+    throw new Error('No API key available - neither session nor backend configured');
   }
 
   // DEPRECATED: Old helper methods replaced by MessageFormatter
@@ -61,32 +85,7 @@ class ClaudeAPIClass {
     localStorage.setItem('claude-api-key', apiKey);
   }
 
-  // New method to get API key from multiple sources
-  async getApiKey() {
-    try {
-      // First check if we have auto-detected API key from backend
-      const config = await ConfigService.checkBackendConfig();
-      
-      if (config.success && config.hasApiKey) {
-        console.log('🔑 Using auto-detected API key from backend');
-        // Return a special marker indicating backend has the key
-        return 'BACKEND_CONFIGURED';
-      }
-      
-      // Fallback to manual API key if auto-detection failed
-      const manualKey = localStorage.getItem('claude-api-key') || this.apiKey;
-      
-      if (!manualKey || manualKey.trim() === '') {
-        throw new Error('No API key available - neither auto-detected nor manually configured');
-      }
-      
-      console.log('🔑 Using manually configured API key');
-      return manualKey;
-    } catch (error) {
-      console.error('❌ API key retrieval failed:', error);
-      throw new Error('API key configuration error: ' + error.message);
-    }
-  }
+  // Removed duplicate getApiKey() method - using session-aware version above
 
 
   // Check proxy server health
@@ -117,8 +116,8 @@ class ClaudeAPIClass {
       const temperature = options.temperature !== undefined ? options.temperature : 0.7;
       const startTime = Date.now();
       
-      // Get API key using integrated method
-      const apiKey = await this.getApiKey();
+      // Get API key using session-aware method
+      const apiKey = this.getApiKey();
       
       // Build messages using SINGLE formatter
       const messages = MessageFormatter.buildConversationMessages(
@@ -156,11 +155,9 @@ class ClaudeAPIClass {
         'anthropic-version': '2023-06-01'
       };
       
-      // Only add x-api-key header if we have a manual key
-      // Backend-configured keys are handled by the proxy
-      if (apiKey !== 'BACKEND_CONFIGURED') {
-        headers['x-api-key'] = apiKey;
-      }
+      // Always use session header format for API key
+      headers['x-session-api-key'] = apiKey;
+      console.log('🔑 Using API key:', this.sessionApiKey ? 'Session (volatile)' : 'Backend/Manual');
 
       // Add extended thinking header for Sonnet 4/Opus 4
       if ((this.extendedThinking || options.extendedThinking) && ClaudeAPIClass.MODELS[model]?.supportsExtendedThinking) {

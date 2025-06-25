@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { DaggerInput } from './components/DaggerInput.jsx'
 import { DaggerOutput } from './components/DaggerOutput.jsx'
 import { DaggerInputDisplay } from './components/DaggerInputDisplay.jsx'
@@ -8,11 +8,12 @@ import { BranchMenu } from './components/BranchMenu.jsx'
 import ActiveThreads from './components/ActiveThreads.jsx'
 import PromptsTab from './components/PromptsTab.jsx'
 import WelcomeScreen from './components/WelcomeScreen.jsx'
+import SessionApiKeyInput from './components/SessionApiKeyInput.jsx'
 import { graphModel } from './models/GraphModel.js'
 import { claudeAPI as ClaudeAPI } from './services/ClaudeAPI.js'
 import { useVisibleConversation } from './hooks/useVisibleConversation.js'
 import PromptsModel from './models/PromptsModel.js'
-import ConfigService from './services/ConfigService.js'
+import ConfigService, { ConfigService as ConfigServiceClass } from './services/ConfigService.js'
 import { BranchContextManager } from './services/BranchContextManager.js'
 import { ConversationChainBuilder } from './services/ConversationChainBuilder.js'
 import { MessageFormatter } from './services/MessageFormatter.js'
@@ -48,9 +49,11 @@ const getRandomHonestStatus = () => {
 function App() {
   const [conversations, setConversations] = useState([])
   const [currentConversationId, setCurrentConversationId] = useState(null)
+  const selectedNodeId = currentConversationId
   const [isProcessing, setIsProcessing] = useState(false)
   const [currentStatus, setCurrentStatus] = useState('')
   const [apiKey, setApiKey] = useState('')
+  const [sessionApiKey, setSessionApiKey] = useState('')
   const [darkMode, setDarkMode] = useState(() => {
     // Default to dark mode, or load from localStorage
     const saved = localStorage.getItem('dagger-dark-mode')
@@ -66,19 +69,10 @@ function App() {
   })
   const [extendedThinking, setExtendedThinking] = useState(false)
   const [currentView, setCurrentView] = useState('linear') // 'linear' | 'graph' | 'prompts'
-  const [selectedNodeId, setSelectedNodeId] = useState(null)
   const [showBranchMenu, setShowBranchMenu] = useState(false)
   const [branchSourceId, setBranchSourceId] = useState(null)
   const [currentBranchContext, setCurrentBranchContext] = useState(null)
   const conversationRefs = useRef({})
-  
-  // Add scroll source tracking to prevent infinite loops
-  const [scrollSource, setScrollSource] = useState('user') // 'user' | 'programmatic'
-  const [isAutoScrolling, setIsAutoScrolling] = useState(false)
-  const [loopDetection, setLoopDetection] = useState({
-    lastSelections: [],
-    loopCount: 0
-  })
   
   // Welcome screen state
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(() => {
@@ -92,6 +86,25 @@ function App() {
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false)
   const [configurationLoading, setConfigurationLoading] = useState(true)
   const [backendError, setBackendError] = useState(null)
+  
+  // Session management state for volatile API key
+  const [lastActivity, setLastActivity] = useState(Date.now())
+
+  // Add debug tracking right after state declarations
+  useEffect(() => {
+    console.log('📊 App state changed:', {
+      conversationsCount: conversations?.length,
+      currentConversationId,
+      currentView,
+      isProcessing,
+      sessionApiKey: !!sessionApiKey,
+      apiKeyConfigured,
+      configurationLoading,
+      showWelcomeScreen,
+      selectedPersonality,
+      timestamp: new Date().toISOString()
+    });
+  }, [conversations, currentConversationId, currentView, isProcessing, sessionApiKey, apiKeyConfigured, configurationLoading, showWelcomeScreen, selectedPersonality]);
 
   // Auto-detect API key configuration on startup
   const checkApiKeyConfiguration = useCallback(async () => {
@@ -99,27 +112,47 @@ function App() {
     setBackendError(null);
     
     try {
-      const config = await ConfigService.checkBackendConfig();
-      setApiKeyConfigured(config.hasApiKey);
+      // Check backend config with current session key context
+      const config = await ConfigService.checkBackendConfig(sessionApiKey);
       
-      if (config.hasApiKey) {
-        console.log('✅ API key auto-detected from backend');
+      setBackendError('');
+      
+      // If we have a session key, we're configured regardless of backend
+      if (sessionApiKey && sessionApiKey.trim()) {
+        setApiKeyConfigured(true);
+        return;
+      }
+      
+      // Otherwise use backend config result
+      setApiKeyConfigured(config.apiKeyConfigured);
+      
+      if (config.apiKeyConfigured) {
+        console.log('✅ API key configured via:', config.configSource);
       }
     } catch (error) {
       console.error('❌ Backend configuration check failed:', error);
       setBackendError(error.message);
-      setApiKeyConfigured(false);
+      
+      // If we have session key, still allow operation
+      if (sessionApiKey && sessionApiKey.trim()) {
+        setApiKeyConfigured(true);
+        setBackendError('');
+      } else {
+        setApiKeyConfigured(false);
+      }
     } finally {
       setConfigurationLoading(false);
     }
-  }, []);
+  }, [sessionApiKey]);
   
   useEffect(() => {
+    console.log('🔄 useEffect [checkApiKeyConfiguration] triggered');
     checkApiKeyConfiguration();
   }, [checkApiKeyConfiguration]);
   
   // Load conversations on mount (after API check)
   useEffect(() => {
+    console.log('🔄 useEffect [apiKeyConfigured] triggered');
     if (apiKeyConfigured) {
       const loadedConversations = graphModel.getAllConversations();
       setConversations(loadedConversations);
@@ -134,6 +167,102 @@ function App() {
     }
   }, [apiKeyConfigured])
 
+  // Activity tracking for session management
+  const updateActivity = useCallback(() => {
+    setLastActivity(Date.now())
+  }, [])
+
+  // BACKUP - Original problematic version
+  /*
+  useEffect(() => {
+    console.log('🔄 useEffect [sessionApiKey-timeout] triggered');
+    console.log('📊 Session timeout state:', {
+      sessionApiKey: !!sessionApiKey,
+      lastActivity: new Date(lastActivity).toISOString(),
+      timeSinceLastUpdate: Date.now() - lastActivity
+    });
+    
+    if (!sessionApiKey) {
+      console.log('✅ Session timeout effect completed (no session key)');
+      return;
+    }
+
+    const checkTimeout = setInterval(() => {
+      const now = Date.now()
+      const timeSinceActivity = now - lastActivity
+      const thirtyMinutes = 30 * 60 * 1000
+
+      if (timeSinceActivity > thirtyMinutes) {
+        console.log('🔥 Session expired - clearing API key')
+        setSessionApiKey('')
+        setApiKeyConfigured(false)
+      }
+    }, 60000) // Check every minute
+
+    console.log('✅ Session timeout effect completed (interval set)');
+    return () => {
+      console.log('🧹 Session timeout cleanup');
+      clearInterval(checkTimeout);
+    };
+  }, [sessionApiKey, lastActivity])
+  */
+
+  // Session timeout effect - FIXED VERSION
+  useEffect(() => {
+    console.log('🔄 useEffect [sessionApiKey-timeout] triggered');
+    
+    if (!sessionApiKey) {
+      console.log('✅ Session timeout effect completed (no session key)');
+      return;
+    }
+
+    const checkTimeout = setInterval(() => {
+      const now = Date.now()
+      const timeSinceActivity = now - lastActivity  // Read current lastActivity value
+      const thirtyMinutes = 30 * 60 * 1000
+
+      if (timeSinceActivity > thirtyMinutes) {
+        console.log('🔥 Session expired - clearing API key')
+        setSessionApiKey('')
+        setApiKeyConfigured(false)
+      }
+    }, 60000) // Check every minute
+
+    console.log('✅ Session timeout effect completed (interval set)');
+    return () => {
+      console.log('🧹 Session timeout cleanup');
+      clearInterval(checkTimeout);
+    };
+  }, [sessionApiKey]) // REMOVED lastActivity from dependencies to break the loop
+
+  // Activity listeners for session management
+  useEffect(() => {
+    console.log('🔄 useEffect [activity-listeners] triggered');
+    const events = ['click', 'keypress', 'scroll', 'mousemove']
+    
+    const handleActivity = () => updateActivity()
+    
+    events.forEach(event => {
+      document.addEventListener(event, handleActivity, true)
+    })
+
+    return () => {
+      events.forEach(event => {
+        document.removeEventListener(event, handleActivity, true)
+      })
+    }
+  }, [updateActivity])
+
+  // Window close cleanup for session security
+  useEffect(() => {
+    console.log('🔄 useEffect [window-beforeunload] triggered');
+    const handleBeforeUnload = () => {
+      setSessionApiKey('') // Burn the evidence
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [])
 
   const handleApiKeySubmit = useCallback(async (key) => {
     if (!ClaudeAPI.validateApiKey(key)) {
@@ -173,6 +302,7 @@ function App() {
 
   // Apply dark mode on mount
   useEffect(() => {
+    console.log('🔄 useEffect [darkMode] triggered');
     if (darkMode) {
       document.documentElement.classList.add('dark')
     } else {
@@ -180,71 +310,36 @@ function App() {
     }
   }, [darkMode])
 
-  // Auto-scroll to selected conversation in linear view (only for programmatic selection)
+  // Simplified auto-scroll: scroll to selected conversation when switching to linear view
   useEffect(() => {
-    if (selectedNodeId && currentView === 'linear' && scrollSource === 'programmatic' && conversationRefs.current[selectedNodeId]) {
-      console.log('📍 Auto-scrolling to conversation:', selectedNodeId);
+    if (currentConversationId && currentView === 'linear' && conversationRefs.current[currentConversationId]) {
+      console.log('📍 Auto-scrolling to selected conversation:', currentConversationId);
       
-      // Set auto-scrolling flag
-      setIsAutoScrolling(true);
-      
-      // Add a small delay to ensure DOM is updated
-      setTimeout(() => {
-        const element = conversationRefs.current[selectedNodeId];
-        if (element) {
+      const element = conversationRefs.current[currentConversationId];
+      if (element) {
+        setTimeout(() => {
           element.scrollIntoView({
             behavior: 'smooth',
             block: 'center'
           });
-          console.log(`📍 Auto-scrolled to conversation ${selectedNodeId}`);
-        }
-      }, 100);
-      
-      // Clear flags after scroll animation completes
-      setTimeout(() => {
-        setScrollSource('user');
-        setIsAutoScrolling(false);
-        console.log('✅ Auto-scroll completed, re-enabling user scroll detection');
-      }, 1500);
+          console.log('✅ Auto-scrolled to conversation:', currentConversationId);
+        }, 100);
+      }
     }
-  }, [selectedNodeId, currentView, scrollSource]);
+  }, [currentConversationId, currentView]);
 
   // Handle scroll-based selection detection (Linear → Graph sync) with loop prevention
   const handleVisibleConversationChange = useCallback((conversationId) => {
-    // Circuit breaker - detect rapid ping-ponging
-    const newSelections = [...loopDetection.lastSelections, conversationId].slice(-10);
-    const uniqueSelections = new Set(newSelections);
-    
-    // If we're rapidly switching between only 2 conversations, STOP
-    if (newSelections.length >= 6 && uniqueSelections.size <= 2) {
-      console.warn('🚨 LOOP DETECTED - Disabling auto-selection temporarily');
-      setIsAutoScrolling(true); // Disable observer
-      
-      // Re-enable after cool-down period
-      setTimeout(() => {
-        setIsAutoScrolling(false);
-        setLoopDetection({ lastSelections: [], loopCount: 0 });
-        console.log('✅ Loop protection reset - Re-enabling scroll detection');
-      }, 3000);
-      
-      return;
-    }
-    
-    setLoopDetection({ lastSelections: newSelections, loopCount: 0 });
-    
-    // Only process if user is actually scrolling (not programmatic) and we're in linear view
-    if (scrollSource === 'user' && !isAutoScrolling && conversationId !== selectedNodeId && currentView === 'linear') {
-      console.log('🔄 Auto-selected conversation from scroll:', conversationId);
-      setSelectedNodeId(conversationId);
-    }
-  }, [selectedNodeId, currentView, scrollSource, isAutoScrolling, loopDetection]);
+    console.log('👁️ DISABLED: Auto-selection disabled, ignoring visibility change to:', conversationId);
+    // Auto-selection disabled for unified click-only selection
+    return;
+  }, []);
 
   // Get conversations to display based on current context
   const getDisplayConversations = useCallback(() => {
     if (currentBranchContext) {
       // Show all conversations in this branch thread
       const branchThread = graphModel.getBranchThread(currentBranchContext + '.0');
-      console.log(`📋 Displaying branch thread:`, branchThread.map(c => c.displayNumber));
       return branchThread;
     } else {
       // Show main thread only
@@ -252,12 +347,14 @@ function App() {
     }
   }, [currentBranchContext])
 
-  // Use intersection observer to detect visible conversations with auto-scroll awareness
+  // DISABLED: Auto-selection removed for unified click-only selection
+  /*
   useVisibleConversation(
     getDisplayConversations(), 
     handleVisibleConversationChange, 
-    currentView === 'linear' && !isAutoScrolling // Only enable in linear view when not auto-scrolling
+    currentView === 'linear' && !isAutoScrolling
   );
+  */
 
   const handleModelChange = useCallback((model) => {
     setSelectedModel(model)
@@ -291,9 +388,7 @@ function App() {
   const handleNodeSelect = useCallback((nodeId, nodeData) => {
     console.log('🎯 Graph node selected:', nodeId);
     
-    // Set flags to prevent feedback loop
-    setScrollSource('programmatic');
-    setSelectedNodeId(nodeId);
+    setCurrentConversationId(nodeId);
     
     // If switching to linear view from graph, scroll to the selected conversation
     if (currentView === 'graph') {
@@ -342,23 +437,64 @@ function App() {
       setConversations(graphModel.getAllConversationsWithBranches());
       setCurrentConversationId(newConversation.id);
       
-      // Get conversation history using MessageFormatter helper
-      const allConversations = graphModel.getAllConversationsWithBranches();
-      const conversationHistory = MessageFormatter.extractConversationHistory(
-        allConversations, 
-        threadId, 
-        branchContext
-      );
-      
-      // Get system prompt if we're in a branch with personality template
+      // Build conversation history based on branch type
+      let conversationHistory = [];
       let systemPrompt = null;
+      
       if (currentBranchContext) {
         const currentBranch = graphModel.getConversation(currentConversationId);
-        const promptTemplateId = currentBranch?.promptTemplate?.id || null;
-        if (promptTemplateId) {
-          const promptTemplate = promptsModel.getPrompt(promptTemplateId);
-          systemPrompt = promptTemplate?.content || null;
+        const branchType = currentBranch?.branchType;
+        
+        console.log('📚 Context inheritance debug:', {
+          threadId,
+          branchContext,
+          branchType,
+          currentConversationId
+        });
+        
+        if (branchType === 'virgin') {
+          // Virgin branch: no context inheritance
+          conversationHistory = [];
+          console.log('🌱 Virgin branch: starting fresh with no history');
+          
+        } else if (branchType === 'personality') {
+          // Personality branch: no history but with system prompt
+          conversationHistory = [];
+          const promptTemplateId = currentBranch?.promptTemplate?.id || null;
+          if (promptTemplateId) {
+            const promptTemplate = promptsModel.getPrompt(promptTemplateId);
+            systemPrompt = promptTemplate?.content || null;
+            console.log('🎭 Personality branch: fresh start with custom prompt');
+          }
+          
+        } else if (branchType === 'knowledge') {
+          // Knowledge branch: full context inheritance
+          const allConversations = graphModel.getAllConversationsWithBranches();
+          conversationHistory = MessageFormatter.extractConversationHistory(
+            allConversations, 
+            threadId, 
+            branchContext
+          );
+          console.log('🧠 Knowledge branch: inheriting', conversationHistory.length, 'messages');
+          
+        } else {
+          // Default: use current logic for backward compatibility
+          const allConversations = graphModel.getAllConversationsWithBranches();
+          conversationHistory = MessageFormatter.extractConversationHistory(
+            allConversations, 
+            threadId, 
+            branchContext
+          );
+          console.log('🔄 Legacy branch: using default context logic');
         }
+      } else {
+        // Main thread: use full context
+        const allConversations = graphModel.getAllConversationsWithBranches();
+        conversationHistory = MessageFormatter.extractConversationHistory(
+          allConversations, 
+          threadId, 
+          branchContext
+        );
       }
       
       // Determine model to use
@@ -381,7 +517,8 @@ function App() {
           model: modelToUse,
           systemPrompt: systemPrompt,
           context: threadId,
-          debug: process.env.NODE_ENV === 'development'
+          debug: process.env.NODE_ENV === 'development',
+          sessionApiKey: sessionApiKey // Pass session API key
         }
       );
       
@@ -480,34 +617,57 @@ function App() {
 
   // Add conversation selection handler
   const handleConversationSelect = useCallback((conversationId) => {
-    const conversation = graphModel.getConversation(conversationId);
-    if (!conversation) return;
+    console.log('🔄 App.handleConversationSelect called with:', conversationId);
+    console.log('🔄 Current conversations:', conversations.map(c => ({ id: c.id, displayNumber: c.displayNumber })));
     
-    console.log(`🔍 Selected conversation:`, conversation);
-    console.log(`🔍 Display number:`, conversation.displayNumber);
-    console.log(`🔍 Is branch:`, graphModel.isBranchId(conversation.displayNumber));
-    
-    setCurrentConversationId(conversationId);
-    
-    // Determine context based on conversation type
-    if (graphModel.isBranchId(conversation.displayNumber)) {
-      // Get all conversations in this branch thread
-      const branchThread = graphModel.getBranchThread(conversation.displayNumber);
-      console.log(`🔍 Branch thread:`, branchThread.map(c => c.displayNumber));
+    // Verify this is a valid conversation ID
+    const foundConversation = conversations.find(c => c.id === conversationId);
+    if (foundConversation) {
+      console.log('✅ App found conversation:', foundConversation);
       
-      // Set branch context to the branch prefix (e.g., "1.1" for "1.1.2")
-      const branchPrefix = conversation.displayNumber.split('.').slice(0, 2).join('.');
-      setCurrentBranchContext(branchPrefix);
-      console.log(`📍 Switched to branch context: ${branchPrefix}`);
+      const conversation = graphModel.getConversation(conversationId);
+      if (!conversation) return;
+      
+      console.log(`🔍 Selected conversation:`, conversation);
+      console.log(`🔍 Display number:`, conversation.displayNumber);
+      console.log(`🔍 Is branch:`, graphModel.isBranchId(conversation.displayNumber));
+      
+      setCurrentConversationId(conversationId);
+      
+      // Determine context based on conversation type
+      if (graphModel.isBranchId(conversation.displayNumber)) {
+        // Get all conversations in this branch thread
+        const branchThread = graphModel.getBranchThread(conversation.displayNumber);
+        console.log(`🔍 Branch thread:`, branchThread.map(c => c.displayNumber));
+        
+        // Set branch context to the branch prefix (e.g., "1.1" for "1.1.2")
+        const branchPrefix = conversation.displayNumber.split('.').slice(0, 2).join('.');
+        setCurrentBranchContext(branchPrefix);
+        console.log(`📍 Switched to branch context: ${branchPrefix}`);
+      } else {
+        // Main thread conversation - show main context
+        setCurrentBranchContext(null);
+        console.log(`📍 Switched to main thread: ${conversation.displayNumber}`);
+      }
+      
+      // Switch to linear view to show selected conversation
+      setCurrentView('linear');
+    } else if (conversationId === null || conversationId === undefined) {
+      console.log('📍 App clearing selection (conversationId is null/undefined)');
+      setCurrentConversationId(null);
     } else {
-      // Main thread conversation - show main context
-      setCurrentBranchContext(null);
-      console.log(`📍 Switched to main thread: ${conversation.displayNumber}`);
+      console.error('❌ App received invalid conversationId:', conversationId);
+      console.log('❌ Available conversation IDs:', conversations.map(c => c.id));
+      // Don't set invalid ID - keep current selection
     }
-    
-    // Switch to linear view to show selected conversation
-    setCurrentView('linear');
-  }, [])
+  }, [conversations])
+
+  // Debug: Track all currentConversationId changes
+  useEffect(() => {
+    console.log('🔄 currentConversationId changed to:', currentConversationId);
+    console.log('🔄 Stack trace for debugging:');
+    console.trace();
+  }, [currentConversationId]);
 
   // Add fork handler
   const handleBranchConversation = useCallback((conversationId) => {
@@ -520,22 +680,42 @@ function App() {
 
   // Add branch creation handler (real implementation)
   const handleCreateBranch = useCallback(async (sourceId, branchType, promptTemplate) => {
+    console.log('🌿 BRANCH DEBUG - Starting branch creation:', {
+      fromConversationId: sourceId,
+      branchType: branchType,
+      currentConversations: conversations.map(c => ({ id: c.id, displayNumber: c.displayNumber }))
+    });
+    
     try {
+      // Find the conversation to branch from
+      const sourceConversation = conversations.find(c => c.id === sourceId);
+      console.log('🌿 BRANCH DEBUG - Source conversation:', sourceConversation);
+      
+      if (!sourceConversation) {
+        console.error('❌ Source conversation not found for ID:', sourceId);
+        return;
+      }
+      
       // Determine model based on branch type
+      console.log('🧠 Processing branch type:', branchType);
       let branchModel;
       
       switch (branchType) {
         case 'virgin':
           branchModel = 'claude-sonnet-4-20250514'; // Fresh conversations
+          console.log('🌱 Virgin branch - using Sonnet 4');
           break;
         case 'personality':
           branchModel = 'claude-sonnet-4-20250514'; // Personality + efficiency
+          console.log('🎭 Personality branch - using Sonnet 4');
           break;
         case 'knowledge':
           branchModel = 'claude-opus-4-20250514';   // Complex context processing
+          console.log('🧠 Knowledge branch - using Opus 4');
           break;
         default:
           branchModel = selectedModel;
+          console.log('❓ Unknown branch type, using default:', branchModel);
       }
       
       console.log(`🌿 Creating ${branchType} branch from conversation ${sourceId} with ${ClaudeAPI.MODELS[branchModel]?.name || branchModel}`);
@@ -547,12 +727,21 @@ function App() {
       // Create branch in data model
       const newBranch = graphModel.createBranch(sourceId, branchType);
       
+      console.log('🌿 BRANCH DEBUG - New conversation created:', {
+        id: newBranch.id,
+        displayNumber: newBranch.displayNumber,
+        parentId: sourceId
+      });
+      
       // Create dedicated thread for this branch
       const branchThreadId = ClaudeAPI.createBranchThread(newBranch.id);
       
       // Set branch-specific model preference and thread ID
       newBranch.preferredModel = branchModel;
-      const updateData = { threadId: branchThreadId };
+      const updateData = { 
+        threadId: branchThreadId,
+        branchType: branchType  // Store branch type for context inheritance
+      };
       
       // If we have a prompt template, store it with the branch
       if (promptTemplate) {
@@ -583,7 +772,7 @@ function App() {
       console.error('❌ Fork creation failed:', error);
       alert(`Failed to create branch: ${error.message}`);
     }
-  }, [currentView, selectedModel])
+  }, [conversations, currentView, selectedModel])
 
   // Add copy conversation handler
   const copyConversation = useCallback((conversation) => {
@@ -655,6 +844,7 @@ This personality framework helps you understand my thinking patterns and communi
           model: selectedModel,
           temperature: 0.7,
           context: 'personality-init'
+          // Session API key is already configured on ClaudeAPI instance
         }
       );
       
@@ -694,9 +884,27 @@ This personality framework helps you understand my thinking patterns and communi
       setIsProcessing(false);
       setCurrentStatus('');
     }
-  }, [selectedModel]);
+  }, [selectedModel, sessionApiKey]);
   
-  
+  // Initialize KHAOS personality when API key becomes available
+  useEffect(() => {
+    console.log('🔄 useEffect [KHAOS-init] triggered');
+    if (apiKeyConfigured && sessionApiKey) {
+      // Set session API key on ClaudeAPI instance
+      ClaudeAPI.setSessionApiKey(sessionApiKey);
+      
+      // Only auto-initialize if we have no conversations yet (Node 0 state)
+      const loadedConversations = graphModel.getAllConversations();
+      if (loadedConversations.length === 0) {
+        console.log('🧠 Auto-initializing KHAOS personality after API key configuration');
+        // Small delay to ensure all initialization is complete
+        setTimeout(() => {
+          console.log('🎯 About to call handlePersonalitySelect after timeout');
+          handlePersonalitySelect('khaos');
+        }, 100);
+      }
+    }
+  }, [apiKeyConfigured, sessionApiKey, handlePersonalitySelect]);
   
   const handleRetryConnection = useCallback(() => {
     ConfigService.clearCache();
@@ -778,35 +986,43 @@ This personality framework helps you understand my thinking patterns and communi
     );
   }
 
-  // Show API key input if not configured in backend
+  // Show session API key input if not configured
   if (!apiKeyConfigured) {
     return (
-      <div className="api-key-required-screen">
-        <div className="api-key-content">
-          <div className="dagger-logo">🗡️ DAGGER</div>
-          <h2>API Key Required</h2>
-          <p>No Claude API key found in backend configuration.</p>
-          
-          <div className="setup-instructions">
-            <h3>Setup Instructions:</h3>
-            <ol>
-              <li>Add your API key to <code>.env</code> file:</li>
-              <pre><code>CLAUDE_API_KEY=sk-ant-your-key-here</code></pre>
-              <li>Restart the proxy server:</li>
-              <pre><code>npm run dev:proxy</code></pre>
-              <li>Refresh this page</li>
-            </ol>
-          </div>
-
-          <button 
-            onClick={handleRetryConnection}
-            className="recheck-button"
-          >
-            🔄 Check Again
-          </button>
-        </div>
-      </div>
-    );
+      <SessionApiKeyInput
+        onApiKeySubmit={async (apiKey) => {
+          try {
+            console.log('🔄 Validating and configuring session API key...')
+            
+            // Test the API key first
+            const testResult = await ConfigServiceClass.testSessionApiKey(apiKey)
+            if (!testResult.valid) {
+              throw new Error(testResult.error)
+            }
+            
+            // Configure session API key in state
+            setSessionApiKey(apiKey)
+            
+            // Configure ClaudeAPI instance with session key
+            ClaudeAPI.setSessionApiKey(apiKey)
+            
+            // Update config status
+            setApiKeyConfigured(true)
+            
+            console.log('✅ Session API key configured successfully')
+          } catch (error) {
+            console.error('❌ Session API key configuration failed:', error)
+            throw error // Let the component handle the error display
+          }
+        }}
+        onTimeout={() => {
+          console.log('⏰ Session timeout - clearing API key')
+          setSessionApiKey('')
+          setApiKeyConfigured(false)
+          ClaudeAPI.setSessionApiKey(null)
+        }}
+      />
+    )
   }
 
   return (
@@ -830,8 +1046,13 @@ This personality framework helps you understand my thinking patterns and communi
           {/* API Status below header */}
           <div className="header-status">
             <span className="status-indicator">
-              🔑 API Key: {apiKeyConfigured ? '✅ Auto-Detected' : '❌ Missing'}
+              🔑 API Key: {apiKeyConfigured ? '✅ Session Active' : '❌ Missing'}
             </span>
+            {sessionApiKey && (
+              <span className="session-indicator">
+                🕒 Session expires in {Math.ceil((30 * 60 * 1000 - (Date.now() - lastActivity)) / 60000)} min
+              </span>
+            )}
           </div>
         </div>
         
@@ -981,7 +1202,10 @@ This personality framework helps you understand my thinking patterns and communi
                     data-node-id={conversation.id}
                     data-conversation-id={conversation.id}
                     className={cardClasses}
-                    onClick={() => setSelectedNodeId(conversation.id)}
+                    onClick={() => {
+                      console.log('📜 Linear view: selecting conversation:', conversation.id);
+                      setCurrentConversationId(conversation.id);
+                    }}
                   >
                   <DaggerInputDisplay 
                     interaction={{
@@ -1018,7 +1242,8 @@ This personality framework helps you understand my thinking patterns and communi
                       className="quick-select-btn"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedNodeId(conversation.id);
+                        console.log('📜 Linear view: selecting conversation:', conversation.id);
+                        setCurrentConversationId(conversation.id);
                       }}
                       title="Select this conversation"
                     >
@@ -1101,16 +1326,16 @@ This personality framework helps you understand my thinking patterns and communi
         )}
 
         {currentView === 'graph' && (
-          <GraphView 
-            conversations={graphModel.getAllConversationsWithBranches()}
-            currentConversationId={currentConversationId}
-            onConversationSelect={handleConversationSelect}
-            onMergeNodes={handleMergeNodes}
-            graphModel={graphModel}
-            theme="dark"
-            onViewChange={handleViewChange}
-            currentView={currentView}
-          />
+            <GraphView 
+              conversations={conversations}
+              currentConversationId={currentConversationId}
+              onConversationSelect={handleConversationSelect}
+              onMergeNodes={handleMergeNodes}
+              graphModel={graphModel}
+              theme="dark"
+              onViewChange={handleViewChange}
+              currentView={currentView}
+            />
         )}
 
         {currentView === 'prompts' && (
@@ -1133,6 +1358,7 @@ This personality framework helps you understand my thinking patterns and communi
             setShowBranchMenu(false);
             setBranchSourceId(null);
           }}
+          conversations={conversations}
         />
       )}
 

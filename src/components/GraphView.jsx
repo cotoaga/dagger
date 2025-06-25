@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import cytoscape from 'cytoscape';
 import dagre from 'cytoscape-dagre';
 import { formatISODateTime } from '../models/GraphModel.js';
@@ -16,6 +16,8 @@ export function GraphView({ conversations, currentConversationId, onConversation
   const containerRef = useRef(null);
   const [cy, setCy] = useState(null);
   const [dragSource, setDragSource] = useState(null);
+  const [selectedNodeId, setSelectedNodeId] = useState(currentConversationId);
+  const [internalSelection, setInternalSelection] = useState(false);
   const [focusState, setFocusState] = useState({
     selectedNodeId: currentConversationId || null,
     pathToRoot: [],
@@ -23,11 +25,65 @@ export function GraphView({ conversations, currentConversationId, onConversation
     highlightedPath: []
   });
 
+  // Stable function references using refs
+  const onConversationSelectRef = useRef(onConversationSelect);
+  const onMergeNodesRef = useRef(onMergeNodes);
+
+  // Debug: Props change detection
+  useEffect(() => {
+    console.log('🔍 GraphView props changed:', {
+      conversations: conversations?.length,
+      currentConversationId,
+      onConversationSelect: typeof onConversationSelect,
+      onMergeNodes: typeof onMergeNodes,
+      graphModel: !!graphModel,
+      theme,
+      timestamp: new Date().toISOString()
+    });
+  }, [conversations, currentConversationId, onConversationSelect, onMergeNodes, graphModel, theme]);
+
+  // Update refs when props change
+  useEffect(() => {
+    onConversationSelectRef.current = onConversationSelect;
+    onMergeNodesRef.current = onMergeNodes;
+  }, [onConversationSelect, onMergeNodes]);
+
+  // Update selected node visually when selection changes
+  useEffect(() => {
+    if (!cy) return;
+    
+    // Clear all selections
+    cy.nodes().removeClass('selected');
+    
+    // Select the current node
+    if (selectedNodeId) {
+      const targetNode = cy.getElementById(selectedNodeId);
+      if (targetNode.length > 0) {
+        targetNode.addClass('selected');
+        console.log('✅ Visual selection applied to node:', selectedNodeId);
+      } else {
+        console.warn('⚠️ Could not find node to select:', selectedNodeId);
+      }
+    }
+  }, [cy, selectedNodeId, currentConversationId]);
+
+  // Sync with external selection changes
+  useEffect(() => {
+    if (currentConversationId !== selectedNodeId) {
+      setSelectedNodeId(currentConversationId);
+    }
+  }, [currentConversationId, selectedNodeId]);
+
   // Transform clean conversations to Cytoscape elements
   const createGraphElements = (conversations) => {
     if (!conversations || conversations.length === 0) {
       return { nodes: [], edges: [] };
     }
+
+    // Debug: Verify conversations have valid IDs
+    console.log('🔍 Creating graph elements from conversations:', 
+      conversations.map(c => ({ id: c.id, displayNumber: c.displayNumber, hasId: !!c.id }))
+    );
 
     // Create nodes (including branches)
     const nodes = conversations.map(conv => ({
@@ -188,22 +244,36 @@ export function GraphView({ conversations, currentConversationId, onConversation
   };
 
   const selectNode = (nodeId) => {
-    if (!nodeId || !conversations) return;
+    console.log('🎯 selectNode called with:', nodeId);
+    
+    if (!nodeId || !conversations) {
+      console.log('❌ selectNode early return - missing nodeId or conversations');
+      return;
+    }
+    
+    // Mark this as internal selection
+    setInternalSelection(true);
     
     const pathToRoot = getPathToRoot(nodeId);
     const allNodeIds = conversations.map(c => c.id);
     const dimmedNodes = allNodeIds.filter(id => !pathToRoot.includes(id));
     
-    setFocusState({
+    const newFocusState = {
       selectedNodeId: nodeId,
       pathToRoot: pathToRoot,
       dimmedNodes: dimmedNodes,
       highlightedPath: [] // Could add edge highlighting here
-    });
+    };
+    
+    console.log('🎯 Setting focus state:', newFocusState);
+    setFocusState(newFocusState);
     
     // Notify parent of selection change
-    if (onConversationSelect) {
-      onConversationSelect(nodeId);
+    console.log('🎯 Calling onConversationSelect with:', nodeId);
+    if (onConversationSelectRef.current) {
+      onConversationSelectRef.current(nodeId);
+    } else {
+      console.error('❌ onConversationSelect callback is missing!');
     }
   };
 
@@ -274,7 +344,7 @@ export function GraphView({ conversations, currentConversationId, onConversation
     elements: [...elements.nodes, ...elements.edges],
 
     style: [
-      // Base node style
+      // Base node style with interaction fixes
       {
         selector: 'node',
         style: {
@@ -289,22 +359,38 @@ export function GraphView({ conversations, currentConversationId, onConversation
           'border-width': 2,
           'width': '60px',
           'height': '60px',
-          'shape': 'round-rectangle'
+          'shape': 'round-rectangle',
+          
+          // CRITICAL: Ensure events work
+          'events': 'yes',
+          'pointer-events': 'all',
+          'overlay-opacity': 0,
+          
+          // Interaction feedback
+          'cursor': 'pointer',
+          'transition-property': 'background-color, border-color, border-width',
+          'transition-duration': '0.2s'
         }
       },
 
-      // Selected node with enhanced focus state
+      // Hover state for better feedback
+      {
+        selector: 'node:hover',
+        style: {
+          'border-color': '#63b3ed',
+          'border-width': 3,
+          'background-color': '#3182ce'
+        }
+      },
+
+      // Selected node with stronger visual feedback
       {
         selector: 'node.selected',
         style: {
-          'border-color': '#3b82f6', // blue-500
-          'border-width': 3,
-          'overlay-color': '#3b82f6',
-          'overlay-opacity': 0.3,
-          'overlay-padding': '8px',
-          'z-index': 10,
-          'transition-property': 'border-color, overlay-opacity',
-          'transition-duration': '0.3s'
+          'border-color': '#f6e05e',
+          'border-width': 4,
+          'background-color': '#d69e2e',
+          'color': '#1a202c'
         }
       },
 
@@ -507,20 +593,65 @@ export function GraphView({ conversations, currentConversationId, onConversation
     autoungrabify: false  // Allow node dragging for merge functionality
   });
 
-  // Initialize Cytoscape
-  useEffect(() => {
-    if (!containerRef.current || !conversations) return;
+  // Memoize graph elements creation to prevent unnecessary regeneration
+  const elements = useMemo(() => {
+    if (!conversations || conversations.length === 0) {
+      return { nodes: [], edges: [] };
+    }
+    return createGraphElements(conversations);
+  }, [conversations]);
 
-    const elements = createGraphElements(conversations);
+  // RESTORED VERSION - With full event handlers and debugging
+  useEffect(() => {
+    console.log('🔄 GraphView useEffect TRIGGERED');
+    console.log('📊 Conversations count:', conversations?.length);
+    console.log('🎯 Current conversation ID:', currentConversationId);
+    console.log('📍 Container ref:', !!containerRef.current);
+    console.log('⏰ Timestamp:', new Date().toISOString());
+    
+    if (!containerRef.current || !conversations) {
+      console.log('❌ Early return - missing container or conversations');
+      return;
+    }
+
     if (elements.nodes.length === 0) return;
 
     const cyInstance = cytoscape(createCytoscapeConfig(elements));
 
-    // Event handlers
+    // DEBUG: Verify event handlers are attached
+    console.log('🎯 Attaching Cytoscape event handlers...');
+
+    // Node tap/click handler with detailed debugging
     cyInstance.on('tap', 'node', (event) => {
-      const nodeId = event.target.data('id');
-      if (onConversationSelect) {
-        onConversationSelect(nodeId);
+      const node = event.target;
+      const nodeId = node.id();
+      const nodeData = node.data();
+      
+      console.log('🎯 RAW NODE CLICK DEBUG:', {
+        clickedNodeId: nodeId,
+        nodeData: nodeData,
+        currentConversationId: currentConversationId,
+        conversations: conversations?.map(c => ({ id: c.id, displayNumber: c.displayNumber }))
+      });
+      
+      // Verify this node exists in conversations array
+      const foundConversation = conversations?.find(c => c.id === nodeId);
+      if (foundConversation) {
+        console.log('✅ Found conversation for clicked node:', foundConversation);
+      } else {
+        console.error('❌ NO CONVERSATION FOUND for node ID:', nodeId);
+        console.log('Available conversation IDs:', conversations?.map(c => c.id));
+      }
+      
+      // Update internal selection state
+      setSelectedNodeId(nodeId);
+      
+      // Notify parent component
+      if (onConversationSelectRef.current) {
+        console.log('✅ Calling onConversationSelect with:', nodeId);
+        onConversationSelectRef.current(nodeId);
+      } else {
+        console.error('❌ onConversationSelect callback is missing!');
       }
     });
 
@@ -537,6 +668,7 @@ export function GraphView({ conversations, currentConversationId, onConversation
       
       if (graphModel && graphModel.isEndNode(nodeId)) {
         dragSourceNode = nodeId;
+        console.log('🎯 About to update drag source:', nodeId);
         setDragSource(nodeId);
         node.addClass('dragging-source');
         console.log('✅ Started dragging end node:', nodeId);
@@ -589,7 +721,7 @@ export function GraphView({ conversations, currentConversationId, onConversation
         console.log('🔀 Attempting merge:', dragSourceNode, '→', validDropTarget);
         
         try {
-          onMergeNodes && onMergeNodes(dragSourceNode, validDropTarget);
+          onMergeNodesRef.current && onMergeNodesRef.current(dragSourceNode, validDropTarget);
           console.log('✅ Merge successful!');
         } catch (error) {
           console.error('❌ Merge failed:', error);
@@ -603,32 +735,38 @@ export function GraphView({ conversations, currentConversationId, onConversation
       cyInstance.nodes().removeClass('dragging-source valid-merge-target merge-target-hover');
       dragSourceNode = null;
       validDropTarget = null;
+      console.log('🎯 About to update drag source:', null);
       setDragSource(null);
     });
 
-    // Node selection and focus state management
-    cyInstance.on('tap', 'node', (event) => {
-      const nodeId = event.target.id();
-      console.log('🎯 Node selected:', nodeId);
-      selectNode(nodeId);
-    });
-
-    // Background click to clear selection
+    // Background tap handler
     cyInstance.on('tap', (event) => {
       if (event.target === cyInstance) {
-        console.log('📍 Background clicked - clearing selection');
-        setFocusState({
+        console.log('📍 Background tap detected - clearing selection');
+        setSelectedNodeId(null);
+        if (onConversationSelectRef.current) {
+          onConversationSelectRef.current(null);
+        }
+        const newFocusState = {
           selectedNodeId: null,
           pathToRoot: [],
           dimmedNodes: [],
           highlightedPath: []
-        });
+        };
+        console.log('🎯 About to update focus state:', newFocusState);
+        setFocusState(newFocusState);
       }
     });
 
     // Auto-fit and center
     cyInstance.fit();
     cyInstance.center();
+
+    // DEBUG: Test if nodes are selectable
+    console.log('🔍 Node selectability test:');
+    cyInstance.nodes().forEach(node => {
+      console.log(`Node ${node.id()}: selectable=${node.selectable()}, grabbable=${node.grabbable()}`);
+    });
 
     setCy(cyInstance);
 
@@ -640,12 +778,93 @@ export function GraphView({ conversations, currentConversationId, onConversation
     };
   }, [conversations, currentConversationId]);
 
-  // Sync focus state with external selection
+  // MINIMAL TEST VERSION - Commented out now that render loop is fixed
+  /*
+  useEffect(() => {
+    console.log('🔄 MINIMAL GraphView useEffect - START');
+    
+    if (!containerRef.current || !conversations) {
+      console.log('❌ MINIMAL: Early return');
+      return;
+    }
+    
+    if (elements.nodes.length === 0) {
+      console.log('❌ MINIMAL: No elements');
+      return;
+    }
+    
+    console.log('🔧 MINIMAL: Creating Cytoscape with', elements.nodes.length, 'nodes');
+    
+    // Destroy existing instance
+    if (cy) {
+      console.log('🗑️ MINIMAL: Destroying existing Cytoscape');
+      cy.destroy();
+    }
+    
+    // Create minimal Cytoscape with NO event handlers
+    const cyInstance = cytoscape({
+      container: containerRef.current,
+      elements: [...elements.nodes, ...elements.edges],
+      style: [
+        {
+          selector: 'node',
+          style: {
+            'label': 'data(label)',
+            'width': '60px',
+            'height': '60px',
+            'background-color': '#2d3748',
+            'color': '#fff'
+          }
+        },
+        {
+          selector: 'edge',
+          style: {
+            'width': 2,
+            'line-color': '#666',
+            'target-arrow-color': '#666',
+            'target-arrow-shape': 'triangle'
+          }
+        }
+      ],
+      layout: { 
+        name: 'dagre',
+        rankDir: 'TB'
+      }
+    });
+    
+    console.log('✅ MINIMAL: Cytoscape created successfully');
+    setCy(cyInstance);
+    
+    return () => {
+      console.log('🧹 MINIMAL: Cleanup');
+      if (cyInstance) {
+        cyInstance.destroy();
+      }
+    };
+  }, [conversations]); // ONLY conversations dependency
+  */
+
+
+  // Sync GraphView focus state with external selection changes
   useEffect(() => {
     if (currentConversationId && currentConversationId !== focusState.selectedNodeId) {
-      selectNode(currentConversationId);
+      console.log('🔄 GraphView syncing to external selection:', currentConversationId);
+      
+      // Update internal focus state to match external selection
+      if (conversations) {
+        const pathToRoot = getPathToRoot(currentConversationId);
+        const allNodeIds = conversations.map(c => c.id);
+        const dimmedNodes = allNodeIds.filter(id => !pathToRoot.includes(id));
+        
+        setFocusState({
+          selectedNodeId: currentConversationId,
+          pathToRoot: pathToRoot,
+          dimmedNodes: dimmedNodes,
+          highlightedPath: []
+        });
+      }
     }
-  }, [currentConversationId]);
+  }, [currentConversationId, conversations]);
 
   // Add tooltip on hover
   useEffect(() => {
@@ -694,7 +913,23 @@ Status: ${data.status}`;
             height: '100%',
             background: '#1a202c',
             border: '1px solid #4a5568',
-            borderRadius: '8px'
+            borderRadius: '8px',
+            position: 'relative',
+            overflow: 'hidden'
+          }}
+          onMouseDown={(e) => {
+            // Prevent container mousedown from interfering with Cytoscape
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            // Only handle clicks that reach the container (background clicks)
+            if (e.target === containerRef.current) {
+              console.log('📍 Graph background clicked');
+              setSelectedNodeId(null);
+              if (onConversationSelectRef.current) {
+                onConversationSelectRef.current(null);
+              }
+            }
           }}
         />
         

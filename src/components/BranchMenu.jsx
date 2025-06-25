@@ -5,11 +5,15 @@ import PromptsModel from '../models/PromptsModel';
  * BranchMenu - Enhanced branch type selector with prompt integration
  * Shows when user clicks Branch button in Linear mode
  */
-export function BranchMenu({ sourceConversationId, onCreateBranch, onClose }) {
-  const [selectedType, setSelectedType] = useState('knowledge');
+export function BranchMenu({ sourceConversationId, onCreateBranch, onClose, conversations }) {
+  const [selectedType, setSelectedType] = useState('virgin');
   const [selectedPrompt, setSelectedPrompt] = useState('');
   const [prompts, setPrompts] = useState([]);
   const [promptsModel] = useState(() => new PromptsModel());
+
+  // Add debugging
+  console.log('🔍 BranchMenu render - selectedType:', selectedType);
+  console.log('🔍 BranchMenu render - selectedPrompt:', selectedPrompt);
 
   useEffect(() => {
     // Load available prompts
@@ -38,10 +42,18 @@ export function BranchMenu({ sourceConversationId, onCreateBranch, onClose }) {
   ];
 
   const handleCreate = () => {
+    console.log('🌿 BranchMenu.handleCreate called with:', {
+      selectedType,
+      selectedPrompt,
+      sourceConversationId
+    });
+    
     if (selectedType === 'personality' && selectedPrompt) {
       const prompt = prompts.find(p => p.id === selectedPrompt);
+      console.log('🎭 Creating personality branch with prompt:', prompt);
       onCreateBranch(sourceConversationId, selectedType, prompt);
     } else {
+      console.log(`🌿 Creating ${selectedType} branch`);
       onCreateBranch(sourceConversationId, selectedType);
     }
   };
@@ -50,28 +62,41 @@ export function BranchMenu({ sourceConversationId, onCreateBranch, onClose }) {
   const starredPrompts = prompts.filter(p => p.starred);
   const isPersonalitySelected = selectedType === 'personality';
 
+  // Find the source conversation to show display number
+  const sourceConversation = conversations?.find(c => c.id === sourceConversationId);
+  const displayTitle = sourceConversation ? sourceConversation.displayNumber : sourceConversationId;
+
   return (
     <div className="branch-menu-overlay" onClick={onClose}>
       <div className="branch-menu" onClick={e => e.stopPropagation()}>
-        <h3>🌿 Create Branch from Conversation {sourceConversationId}</h3>
+        <h3>🌿 Create Branch from Conversation {displayTitle}</h3>
         
         <div className="branch-types">
           {branchTypes.map(branch => (
-            <label key={branch.type} className={selectedType === branch.type ? 'selected' : ''}>
-              <input 
-                type="radio" 
-                value={branch.type}
-                checked={selectedType === branch.type}
-                onChange={e => setSelectedType(e.target.value)}
-              />
-              <div className="branch-option">
-                <div className="branch-header">
-                  <span className="branch-emoji">{branch.emoji}</span>
-                  <strong>{branch.title}</strong>
-                </div>
-                <p>{branch.description}</p>
+            <div 
+              key={branch.type} 
+              className={`branch-option ${selectedType === branch.type ? 'selected' : ''}`}
+              onClick={() => {
+                console.log('🔘 Direct click handler:', branch.type);
+                setSelectedType(branch.type);
+                console.log('🔘 Should update to:', branch.type);
+              }}
+              style={{
+                border: selectedType === branch.type ? '3px solid #f59e0b' : '2px solid #4b5563',
+                borderRadius: '8px',
+                padding: '12px',
+                margin: '8px 0',
+                cursor: 'pointer',
+                backgroundColor: selectedType === branch.type ? 'rgba(245, 158, 11, 0.1)' : 'transparent'
+              }}
+            >
+              <div className="branch-header">
+                <strong>{branch.emoji} {branch.title}</strong>
               </div>
-            </label>
+              <p style={{ margin: '4px 0 0 0', color: '#9ca3af' }}>
+                {branch.description}
+              </p>
+            </div>
           ))}
         </div>
 
@@ -149,13 +174,18 @@ export function BranchMenu({ sourceConversationId, onCreateBranch, onClose }) {
           <button 
             onClick={handleCreate} 
             className="create-branch-btn"
-            disabled={isPersonalitySelected && !selectedPrompt}
-            title={isPersonalitySelected && !selectedPrompt ? 'Please select a personality template' : ''}
+            disabled={selectedType === 'personality' && !selectedPrompt}
+            style={{
+              backgroundColor: '#f59e0b',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '10px 20px',
+              cursor: 'pointer',
+              fontWeight: 'bold'
+            }}
           >
-            {isPersonalitySelected && selectedPrompt ? 
-              `Create ${prompts.find(p => p.id === selectedPrompt)?.name} Branch` :
-              `Create ${selectedType} Branch`
-            }
+            Create {selectedType} Branch
           </button>
           <button onClick={onClose} className="cancel-btn">
             Cancel
