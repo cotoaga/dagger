@@ -55,7 +55,7 @@ describe('Context Inheritance & Message Duplication - TDD', () => {
     expect(graphModel.getAllConversations()).toHaveLength(0)
     
     // Get KHAOS personality template
-    const khaosTemplate = promptsModel.getPrompt('khaos-core')
+    const khaosTemplate = promptsModel.getPrompt('khaos-explorer')
     expect(khaosTemplate).toBeDefined()
     expect(khaosTemplate.content).toContain('KHAOS')
     
@@ -146,7 +146,7 @@ describe('Context Inheritance & Message Duplication - TDD', () => {
 
   test('system messages should not appear in user conversation', async () => {
     // ARRANGE: Initialize personality with system message
-    const khaosTemplate = promptsModel.getPrompt('khaos-core')
+    const khaosTemplate = promptsModel.getPrompt('khaos-explorer')
     const userPrompt = "Hello Claude, I'm ready to explore distributed cognition."
     
     const conv0 = graphModel.addConversation(
@@ -256,7 +256,7 @@ describe('Context Inheritance & Message Duplication - TDD', () => {
 
   test('system prompt should be passed to API separately from user input', async () => {
     // ARRANGE: Create personality conversation
-    const khaosTemplate = promptsModel.getPrompt('khaos-core')
+    const khaosTemplate = promptsModel.getPrompt('khaos-explorer')
     const userInput = "Test message for API"
     const systemPrompt = khaosTemplate.content
     

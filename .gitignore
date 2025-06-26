@@ -175,7 +175,6 @@ dev.config.js
 # Claude conversation exports (may contain sensitive data)
 exports/
 conversations/
-history/
 obsolete/
 
 # Backup files

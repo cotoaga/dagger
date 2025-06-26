@@ -16,42 +16,24 @@ const MatrixRain = () => {
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    // Multicultural Matrix Rain Character Set - Culturally Respectful
+    // Safe character set - web-compatible alternatives
     const chars = 
-      // Binary Foundation
+      // Binary Foundation (safe)
       "01" +
-      
-      // Greek (Ancient Wisdom)
-      "ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩαβγδεζηθικλμνξοπρστυφχψω" +
-      
-      // Phoenician (First Alphabet) 
-      "𐤀𐤁𐤂𐤃𐤄𐤅𐤆𐤇𐤈𐤉𐤊𐤋𐤌𐤍𐤎𐤏𐤐𐤑𐤒𐤓𐤔𐤕𐤖𐤗𐤘𐤙𐤚" +
-      
-      // Latin (Western Foundation)
+      // Latin (safe)
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" +
-      
-      // Cyrillic (Slavic Heritage)
+      // Greek (mostly safe)
+      "ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩαβγδεζηθικλμνξοπρστυφχψω" +
+      // Cyrillic (safe)
       "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя" +
-      
-      // Arabic (Semitic Beauty)
-      "ابتثجحخدذرزسشصضطظعغفقكلمنهويءآأؤإئ" +
-      
-      // Japanese Katakana (Cyberpunk Classic)
+      // Japanese Katakana (safe)
       "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン" +
-      
-      // Japanese Hiragana (Flowing Complement)
-      "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん" +
-      
-      // Mathematical Symbols (Universal Logic)
-      "∑∏∫∂∞√∆∇∈∉∪∩⊂⊃⊆⊇∀∃∄¬∧∨⊕⊗≡≠≤≥≈∝∴∵" +
-      
-      // Additional Ancient Scripts
-      "𐊀𐊁𐊂𐊃𐊄𐊅𐊆𐊇𐊈𐊉𐊊𐊋𐊌𐊍𐊎𐊏" + // Lycian
-      "𐌀𐌁𐌂𐌃𐌄𐌅𐌖𐌗𐌘𐌙𐌚𐌛𐌜𐌝𐌞"; // Etruscan
+      // Mathematical symbols (safe subset)
+      "∑∏∫∂∞√∆∇∈∉∪∩⊂⊃∀∃¬∧∨≡≠≤≥≈";
       
     const charArray = chars.split("");
 
-    // Color variations for different character sets - CULTURALLY RESPECTFUL
+    // Color variations for safe character sets
     const getCharColor = (char) => {
       // Binary - bright matrix green (digital foundation)
       if ('01'.includes(char)) return '#00ff41';
@@ -59,26 +41,17 @@ const MatrixRain = () => {
       // Greek - golden (wisdom, classical heritage)
       if ('ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩαβγδεζηθικλμνξοπρστυφχψω'.includes(char)) return '#ffd700';
       
-      // Phoenician - royal purple (ancient royalty, historical depth)
-      if (char.charCodeAt(0) >= 0x10900 && char.charCodeAt(0) <= 0x1091F) return '#9d4edd';
-      
       // Latin - clean white (clarity, universality)
       if ('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'.includes(char)) return '#ffffff';
       
       // Cyrillic - orthodox blue (Eastern Orthodox tradition)
       if ('АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя'.includes(char)) return '#1e40af';
       
-      // Arabic - Islamic green (sacred color, paradise) ✅ CULTURALLY RESPECTFUL
-      if ('ابتثجحخدذرزسشصضطظعغفقكلمنهويءآأؤإئ'.includes(char)) return '#00d455';
-      
       // Japanese - rising sun red (strength, cultural heritage)
-      if ('アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンあいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん'.includes(char)) return '#dc2626';
+      if ('アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン'.includes(char)) return '#dc2626';
       
       // Mathematical - electric blue (universal logic)
-      if ('∑∏∫∂∞√∆∇∈∉∪∩⊂⊃⊆⊇∀∃∄¬∧∨⊕⊗≡≠≤≥≈∝∴∵'.includes(char)) return '#3b82f6';
-      
-      // Ancient scripts - amber (historical wisdom)
-      if (char.charCodeAt(0) >= 0x10A00) return '#f59e0b';
+      if ('∑∏∫∂∞√∆∇∈∉∪∩⊂⊃∀∃¬∧∨≡≠≤≥≈'.includes(char)) return '#3b82f6';
       
       // Default matrix green
       return '#00ff41';
@@ -111,13 +84,8 @@ const MatrixRain = () => {
         // Set color based on character type
         ctx.fillStyle = getCharColor(char);
         
-        // Add slight glow effect for special characters
-        if (getCharColor(char) !== '#00ff41') {
-          ctx.shadowColor = getCharColor(char);
-          ctx.shadowBlur = 3;
-        } else {
-          ctx.shadowBlur = 0;
-        }
+        // Removed glow effects to prevent pulse effect
+        ctx.shadowBlur = 0;
         
         ctx.fillText(char, x, y);
 
@@ -129,7 +97,7 @@ const MatrixRain = () => {
       }
     };
 
-    const interval = setInterval(draw, 40); // Slightly slower for better readability
+    const interval = setInterval(draw, 40); // Restored normal frame rate
 
     return () => {
       clearInterval(interval);
@@ -146,7 +114,7 @@ const MatrixRain = () => {
         top: 0,
         left: 0,
         zIndex: -1,
-        opacity: 0.4 // Slightly more visible for multicultural effect
+        opacity: 0.4 // Restored normal opacity
       }}
     />
   );

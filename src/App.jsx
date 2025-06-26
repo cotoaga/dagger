@@ -951,13 +951,13 @@ This personality framework helps you understand my thinking patterns and communi
   
   const getPersonalityTemplate = (personalityId) => {
     const templates = {
-      'khaos': promptsModel.getPrompt('khaos-core')?.content || '',
-      'coder': promptsModel.getPrompt('code-specialist')?.content || '',
-      'analyst': promptsModel.getPrompt('strategic-analyst')?.content || '',
-      'virgin': promptsModel.getPrompt('virgin-claude')?.content || 'You are Claude, created by Anthropic. You are helpful, harmless, and honest.'
+      'khaos-explorer': promptsModel.getPrompt('khaos-explorer')?.content || '',
+      'khaos': promptsModel.getPrompt('khaos-explorer')?.content || '', // Legacy compatibility
+      'virgin': promptsModel.getPrompt('virgin-claude')?.content || 'You are Claude, created by Anthropic. You are helpful, harmless, and honest.',
+      'squeezer': promptsModel.getPrompt('khaos-squeezer')?.content || '',
+      'diver': promptsModel.getPrompt('khaos-diver')?.content || ''
     };
-    
-    return templates[personalityId] || templates.virgin;
+    return templates[personalityId] || templates['virgin'];
   };
   
   // Handle personality selection
@@ -1056,7 +1056,7 @@ This personality framework helps you understand my thinking patterns and communi
         // Small delay to ensure all initialization is complete
         setTimeout(() => {
           console.log('🎯 About to call handlePersonalitySelect after timeout');
-          handlePersonalitySelect('khaos');
+          handlePersonalitySelect('khaos-explorer');
         }, 100);
       }
     }
@@ -1069,35 +1069,35 @@ This personality framework helps you understand my thinking patterns and communi
   
   const availablePersonalities = [
     {
-      id: 'khaos',
-      name: 'KHAOS CORE V3.0',
+      id: 'khaos-explorer',
+      name: 'KHAOS EXPLORER V4.0',
       type: 'khaos',
-      chars: promptsModel.getPrompt('khaos-core')?.content.length || 899,
-      lines: promptsModel.getPrompt('khaos-core')?.content.split('\n').length || 16,
+      chars: promptsModel.getPrompt('khaos-explorer')?.content.length || 340,
+      lines: promptsModel.getPrompt('khaos-explorer')?.content.split('\n').length || 12,
       starred: true
     },
     {
-      id: 'coder',
-      name: 'CODE SPECIALIST',
-      type: 'coder',
-      chars: promptsModel.getPrompt('code-specialist')?.content.length || 407,
-      lines: promptsModel.getPrompt('code-specialist')?.content.split('\n').length || 9,
+      id: 'virgin-claude', 
+      name: 'VIRGIN CLAUDE',
+      type: 'virgin',
+      chars: 79,
+      lines: 1,
       starred: true
     },
     {
-      id: 'analyst',
-      name: 'STRATEGIC ANALYST',
-      type: 'analyst',
-      chars: promptsModel.getPrompt('strategic-analyst')?.content.length || 542,
-      lines: promptsModel.getPrompt('strategic-analyst')?.content.split('\n').length || 12,
+      id: 'khaos-squeezer',
+      name: 'KHAOS SQUEEZER',
+      type: 'utility', 
+      chars: promptsModel.getPrompt('khaos-squeezer')?.content.length || 310,
+      lines: promptsModel.getPrompt('khaos-squeezer')?.content.split('\n').length || 11,
       starred: false
     },
     {
-      id: 'virgin',
-      name: 'VIRGIN CLAUDE',
-      type: 'virgin',
-      chars: promptsModel.getPrompt('virgin-claude')?.content.length || 76,
-      lines: promptsModel.getPrompt('virgin-claude')?.content.split('\n').length || 1,
+      id: 'khaos-diver',
+      name: 'KHAOS DIVER',
+      type: 'utility',
+      chars: promptsModel.getPrompt('khaos-diver')?.content.length || 280,
+      lines: promptsModel.getPrompt('khaos-diver')?.content.split('\n').length || 10,
       starred: false
     }
   ];
@@ -1486,6 +1486,10 @@ This personality framework helps you understand my thinking patterns and communi
                 >
                   Cotoaga.Net
                 </a>
+              </div>
+              
+              <div className="footer-copyright">
+                2025 – Ideas want to be free! Content under CC BY-SA 4.0 | Use it, improve it, share it. Created with AI support, compliant with the EU AI Act. Learn in our workshops how to use AI responsibly and effectively.
               </div>
               
               <div className="footer-line-2">

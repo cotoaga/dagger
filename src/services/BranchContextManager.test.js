@@ -19,7 +19,7 @@ describe('BranchContextManager - Context Inheritance', () => {
     const conv2 = graphModel.addConversation('How does it work?', 'Through neural networks...')
     
     // ACT: Create branch from node 2>
-    const branchContext = branchManager.createBranchContext(conv2.id, 'khaos-core')
+    const branchContext = branchManager.createBranchContext(conv2.id, 'khaos-explorer')
     
     // ASSERT: Branch should inherit full parent history
     expect(branchContext.parentHistory).toHaveLength(4) // 1>, >1, 2>, >2
@@ -32,7 +32,7 @@ describe('BranchContextManager - Context Inheritance', () => {
     graphModel.addConversation('Basic question', 'Basic answer')
     
     // ACT: Create branch with KHAOS template
-    const branchContext = branchManager.createBranchContext('1', 'khaos-core')
+    const branchContext = branchManager.createBranchContext('1', 'khaos-explorer')
     
     // ASSERT: Branch should have KHAOS personality prompt
     expect(branchContext.systemPrompt).toContain('KHAOS')
@@ -44,7 +44,7 @@ describe('BranchContextManager - Context Inheritance', () => {
     const conv1 = graphModel.addConversation('Microservices question', 'Microservices have benefits...')
     
     // ACT: Build context chain for branch API call
-    const contextChain = branchManager.buildContextChain(conv1.id, 'khaos-core', 'who are you?')
+    const contextChain = branchManager.buildContextChain(conv1.id, 'khaos-explorer', 'who are you?')
     
     // ASSERT: Complete context chain structure
     expect(contextChain).toHaveProperty('messages')
@@ -56,7 +56,7 @@ describe('BranchContextManager - Context Inheritance', () => {
 
   test('should handle virgin branch with no parent context', () => {
     // ACT: Create virgin branch (no parent history)
-    const branchContext = branchManager.createBranchContext(null, 'khaos-core')
+    const branchContext = branchManager.createBranchContext(null, 'khaos-explorer')
     
     // ASSERT: Only system prompt, no parent history
     expect(branchContext.parentHistory).toHaveLength(0)

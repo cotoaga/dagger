@@ -938,7 +938,7 @@ html {
 }
 
 .loading-text {
-  animation: thinking 2s infinite;
+  /* Removed thinking animation - causing conflicts with other loading-text rules */
 }
 
 /* Header actions */
@@ -1087,7 +1087,7 @@ html.dark {
 /* Selected conversation highlighting */
 .selected-conversation {
   position: relative;
-  animation: highlightPulse 2s ease-in-out;
+  /* TEMPORARILY DISABLED: animation: highlightPulse 2s ease-in-out; */
 }
 
 .selected-conversation::before {
@@ -2602,7 +2602,7 @@ html.dark {
   background: rgba(59, 130, 246, 0.05);
   transform: scale(1.02);
   z-index: 10;
-  animation: selectionPulse 1.5s ease-in-out 1;
+  /* TEMPORARILY DISABLED: animation: selectionPulse 1.5s ease-in-out 1; */
 }
 
 /* Dimmed (non-selected) conversation cards */
@@ -2830,7 +2830,7 @@ html.dark {
   font-size: 14px;
   margin-top: 8px;
   text-align: center;
-  animation: honest-pulse 2s ease-in-out infinite;
+  /* Removed honest-pulse animation - causing whole screen pulse effect */
 }
 
 .app.dark .loading-text {
@@ -3009,6 +3009,16 @@ html.dark {
   text-decoration: underline;
 }
 
+/* Footer copyright line */
+.footer-copyright {
+  font-size: 0.8rem;
+  color: #8b949e;
+  line-height: 1.4;
+  margin: 0.75rem 0;
+  text-align: center;
+  padding: 0.5rem 1rem;
+}
+
 /* Second footer line - SBaaS tagline */
 .footer-line-2 {
   font-size: 0.85rem;
@@ -3044,6 +3054,10 @@ html.dark {
 .app.light .cotoaga-link:hover {
   color: #1d4ed8;
   background: rgba(37, 99, 235, 0.1);
+}
+
+.app.light .footer-copyright {
+  color: #6b7280;
 }
 
 .app.light .footer-line-2 {
