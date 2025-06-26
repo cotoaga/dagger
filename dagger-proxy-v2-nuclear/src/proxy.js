@@ -19,39 +19,6 @@ dotenv.config()
 const app = express()
 const PORT = process.env.PROXY_PORT || 3001
 
-/**
- * 🗡️ DEMON OBLITERATION: Transform MessageFormatter output to Claude API format
- * Extracts system messages to top-level parameter (Claude API requirement)
- */
-function transformForClaudeAPI(messages) {
-  if (!Array.isArray(messages) || messages.length === 0) {
-    return { system: null, messages: [] };
-  }
-  
-  let systemMessage = null;
-  const filteredMessages = [];
-  
-  for (const message of messages) {
-    if (message.role === 'system') {
-      // Extract system message content as string
-      systemMessage = message.content[0]?.text || '';
-      console.log('🎭 Extracted system message:', systemMessage.substring(0, 100) + '...');
-    } else {
-      // Keep non-system messages in array
-      filteredMessages.push(message);
-    }
-  }
-  
-  console.log('🔄 Claude API transformation:');
-  console.log(`  System parameter: ${systemMessage ? 'SET' : 'NULL'}`);
-  console.log(`  Messages array: ${filteredMessages.length} messages`);
-  
-  return {
-    system: systemMessage,
-    messages: filteredMessages
-  };
-}
-
 // Middleware - MINIMAL configuration only
 app.use(express.json({ limit: '10mb' }))
 
@@ -78,9 +45,8 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'healthy', 
     timestamp: new Date().toISOString(),
-    service: 'Nuclear DAGGER Proxy v2.0 - Demon Obliterated',
-    version: '2.0.0',
-    systemMessageFix: 'ACTIVE'
+    service: 'DAGGER Proxy v2.0 Nuclear',
+    version: '2.0.0'
   })
 })
 
@@ -90,8 +56,6 @@ app.get('/health', (req, res) => {
 
 app.post('/api/claude', async (req, res) => {
   try {
-    console.log('🗡️ Nuclear proxy with Claude API format fix');
-    
     // Step 1: Get API key (session header takes priority over environment)
     const apiKey = req.headers['x-session-api-key'] || process.env.CLAUDE_API_KEY
     
@@ -104,27 +68,7 @@ app.post('/api/claude', async (req, res) => {
       })
     }
     
-    // Step 2: CRITICAL FIX - Transform MessageFormatter output to Claude API format
-    const { system, messages } = transformForClaudeAPI(req.body.messages);
-    
-    // Build Claude API request with correct format
-    const claudeRequest = {
-      model: req.body.model || 'claude-sonnet-4-20250514',
-      max_tokens: req.body.max_tokens || 4000,
-      temperature: req.body.temperature !== undefined ? req.body.temperature : 0.7,
-      messages: messages // NO system messages in this array
-    };
-    
-    // Add system parameter if extracted
-    if (system) {
-      claudeRequest.system = system;
-      console.log('🎭 Added system parameter to Claude API request');
-    }
-    
-    console.log('🚀 Forwarding to Claude API with correct format');
-    console.log('📊 Request payload:', JSON.stringify(claudeRequest, null, 2));
-    
-    // Step 3: Forward to Claude API with correct format
+    // Step 2: Forward request to Claude API (ZERO MODIFICATION)
     const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -134,27 +78,15 @@ app.post('/api/claude', async (req, res) => {
         // Forward extended thinking header if present
         ...(req.headers['anthropic-beta'] && { 'anthropic-beta': req.headers['anthropic-beta'] })
       },
-      body: JSON.stringify(claudeRequest)
+      body: JSON.stringify(req.body) // ← COMPLETE TRANSPARENCY: Forward exact payload
     })
     
-    // Step 4: Return Claude response transparently
+    // Step 3: Return Claude response (ZERO MODIFICATION)
     const data = await claudeResponse.json()
-    console.log('✅ Claude API response received');
-    
-    // Log token usage if available
-    if (data.usage) {
-      console.log('💰 Token usage:', {
-        input: data.usage.input_tokens,
-        output: data.usage.output_tokens,
-        cached: data.usage.cache_read_input_tokens || 0,
-        total: (data.usage.input_tokens || 0) + (data.usage.output_tokens || 0)
-      });
-    }
-    
-    res.status(claudeResponse.status).json(data)
+    res.status(claudeResponse.status).json(data) // ← COMPLETE TRANSPARENCY: Forward exact response
     
   } catch (error) {
-    console.error('❌ Nuclear proxy error:', error);
+    // ONLY proxy infrastructure errors - NEVER content validation errors
     res.status(500).json({
       error: {
         type: 'proxy_error',
@@ -164,11 +96,9 @@ app.post('/api/claude', async (req, res) => {
   }
 })
 
-// Legacy endpoint compatibility (uses same transformation)
+// Legacy endpoint compatibility (forwards to same logic)
 app.post('/api/chat', async (req, res) => {
   try {
-    console.log('🗡️ Legacy endpoint with Claude API format fix');
-    
     // Step 1: Get API key (session header takes priority over environment)
     const apiKey = req.headers['x-session-api-key'] || process.env.CLAUDE_API_KEY
     
@@ -181,26 +111,7 @@ app.post('/api/chat', async (req, res) => {
       })
     }
     
-    // Step 2: CRITICAL FIX - Transform MessageFormatter output to Claude API format
-    const { system, messages } = transformForClaudeAPI(req.body.messages);
-    
-    // Build Claude API request with correct format
-    const claudeRequest = {
-      model: req.body.model || 'claude-sonnet-4-20250514',
-      max_tokens: req.body.max_tokens || 4000,
-      temperature: req.body.temperature !== undefined ? req.body.temperature : 0.7,
-      messages: messages // NO system messages in this array
-    };
-    
-    // Add system parameter if extracted
-    if (system) {
-      claudeRequest.system = system;
-      console.log('🎭 Legacy endpoint: Added system parameter to Claude API request');
-    }
-    
-    console.log('🚀 Legacy endpoint: Forwarding to Claude API with correct format');
-    
-    // Step 3: Forward to Claude API with correct format
+    // Step 2: Forward request to Claude API (ZERO MODIFICATION)
     const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -210,27 +121,15 @@ app.post('/api/chat', async (req, res) => {
         // Forward extended thinking header if present
         ...(req.headers['anthropic-beta'] && { 'anthropic-beta': req.headers['anthropic-beta'] })
       },
-      body: JSON.stringify(claudeRequest)
+      body: JSON.stringify(req.body) // ← COMPLETE TRANSPARENCY: Forward exact payload
     })
     
-    // Step 4: Return Claude response transparently
+    // Step 3: Return Claude response (ZERO MODIFICATION)
     const data = await claudeResponse.json()
-    console.log('✅ Legacy endpoint: Claude API response received');
-    
-    // Log token usage if available
-    if (data.usage) {
-      console.log('💰 Legacy endpoint token usage:', {
-        input: data.usage.input_tokens,
-        output: data.usage.output_tokens,
-        cached: data.usage.cache_read_input_tokens || 0,
-        total: (data.usage.input_tokens || 0) + (data.usage.output_tokens || 0)
-      });
-    }
-    
-    res.status(claudeResponse.status).json(data)
+    res.status(claudeResponse.status).json(data) // ← COMPLETE TRANSPARENCY: Forward exact response
     
   } catch (error) {
-    console.error('❌ Legacy endpoint error:', error);
+    // ONLY proxy infrastructure errors - NEVER content validation errors
     res.status(500).json({
       error: {
         type: 'proxy_error',

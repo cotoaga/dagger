@@ -220,6 +220,9 @@ class ClaudeAPIClass {
         usage: {
           input_tokens: data.usage?.input_tokens || 0,
           output_tokens: data.usage?.output_tokens || 0,
+          cache_read_input_tokens: data.usage?.cache_read_input_tokens || 0,
+          cache_write_input_tokens: data.usage?.cache_write_input_tokens || 0,
+          cache_creation_input_tokens: data.usage?.cache_creation_input_tokens || 0,
           total_tokens: (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0)
         },
         model: data.model || model,

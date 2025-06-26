@@ -18,6 +18,7 @@ import { BranchContextManager } from './services/BranchContextManager.js'
 import { ConversationChainBuilder } from './services/ConversationChainBuilder.js'
 import { MessageFormatter } from './services/MessageFormatter.js'
 import { TokenGauge } from './components/TokenGauge.jsx'
+import { TokenUsageDisplay, SessionTokenSummary } from './components/TokenUsageDisplay.jsx'
 import './App.css'
 
 // Intellectually honest status messages for LLMs
@@ -1407,20 +1408,29 @@ This personality framework helps you understand my thinking patterns and communi
                   )}
                   
                   {conversation.response && (
-                    <DaggerOutput
-                      response={{
-                        content: conversation.response,
-                        totalTokens: conversation.tokenCount,
-                        timestamp: new Date(conversation.timestamp),
-                        processingTimeMs: conversation.processingTime,
-                        model: conversation.model
-                      }}
-                      displayNumber={conversation.displayNumber}
-                      isLoading={conversation.status === 'processing'}
-                      conversationId={conversation.id}
-                      onBranch={handleBranchConversation}
-                      onContinue={handleConversationSelect}
-                    />
+                    <>
+                      <DaggerOutput
+                        response={{
+                          content: conversation.response,
+                          totalTokens: conversation.tokenCount,
+                          timestamp: new Date(conversation.timestamp),
+                          processingTimeMs: conversation.processingTime,
+                          model: conversation.model
+                        }}
+                        displayNumber={conversation.displayNumber}
+                        isLoading={conversation.status === 'processing'}
+                        conversationId={conversation.id}
+                        onBranch={handleBranchConversation}
+                        onContinue={handleConversationSelect}
+                      />
+                      {conversation.usage && (
+                        <TokenUsageDisplay 
+                          usage={conversation.usage}
+                          model={conversation.model}
+                          variant="detailed"
+                        />
+                      )}
+                    </>
                   )}
                   
                 </div>
@@ -1436,6 +1446,11 @@ This personality framework helps you understand my thinking patterns and communi
                 />
               )}
             </div>
+
+            {/* Session Token Summary */}
+            {getDisplayConversations().length > 0 && (
+              <SessionTokenSummary conversations={getDisplayConversations()} />
+            )}
 
             <div className="input-section">
               <DaggerInput

@@ -1,9 +1,9 @@
-# 🗡️ DAGGER v0.3.1 - Advanced Knowledge Cartography Platform
-**Operational drag-to-merge conversation branching with distributed cognition architecture**
+# 🗡️ DAGGER v0.4.0 - Advanced Knowledge Cartography Platform
+**Nuclear transparency proxy with token economics and distributed cognition architecture**
 
 > "Context bandwidth is the bottleneck. DAGGER transforms linear chat into navigable knowledge topology where thoughts branch, merge, and scale beyond single conversation limits."
 
-**Status: v0.3.1 PRODUCTION READY ✅**
+**Status: v0.4.0 PRODUCTION READY ✅**
 - Drag-to-merge conversation branching: OPERATIONAL
 - Temperature-controlled AI creativity: OPERATIONAL  
 - Extended thinking mode (Claude Sonnet 4): OPERATIONAL
@@ -12,8 +12,11 @@
 - Branch selection UI: FULLY OPERATIONAL ✅
 - Session API key management: OPERATIONAL
 - Linear-Graph view synchronization: OPERATIONAL
+- Nuclear Proxy v2.0: COMPLETE TRANSPARENCY ✅
+- Token economics & usage tracking: OPERATIONAL
+- Tokenizer analysis tools: OPERATIONAL
 
-## What Makes DAGGER v0.3 Revolutionary
+## What Makes DAGGER v0.4 Revolutionary
 
 DAGGER solves the fundamental constraint that kills deep thinking: **linear conversation interfaces hit context bandwidth limits**. Instead of losing your train of thought in tangents, DAGGER provides:
 
@@ -23,6 +26,8 @@ DAGGER solves the fundamental constraint that kills deep thinking: **linear conv
 - **Extended thinking mode**: Advanced reasoning with Claude Sonnet 4 + Opus 4
 - **Temperature control**: Fine-tune AI creativity (0.1=Focused ↔ 1.0=Creative)
 - **Real-time topology mapping**: Live conversation graph with Cytoscape.js
+- **Token economics integration**: Real-time cost tracking and usage analytics
+- **Nuclear transparency**: Zero-validation proxy with complete request/response visibility
 
 ### 🗺️ Knowledge Navigation System
 - **Conversation cartography**: Map complex thinking as you explore it
@@ -30,20 +35,22 @@ DAGGER solves the fundamental constraint that kills deep thinking: **linear conv
 - **Dimensional navigation**: Zoom in/out/across conversation topology
 - **Context preservation**: Never lose threading in complex discussions
 
-## v0.3 Technical Architecture
+## v0.4 Technical Architecture
 
-### Enhanced Dual-Server Design
-DAGGER v0.3 requires coordinated operation of two sophisticated systems:
+### Nuclear Transparency Dual-Server Design
+DAGGER v0.4 requires coordinated operation of two sophisticated systems:
 
-#### 1. Enhanced API Proxy Server (Port 3001)
+#### 1. Nuclear Proxy Server v2.0 (Port 3001)
 ```bash
 npm run dev:proxy
 ```
+- **Nuclear Transparency**: Zero validation, complete request/response passthrough
 - **Claude Sonnet 4/Opus 4 Integration**: Latest model support with extended thinking
 - **Dynamic Timeout Scaling**: Smart API timeouts (30s-3min) based on complexity
 - **Temperature Passthrough**: Real-time creativity control with metadata tracking
-- **Advanced Error Handling**: Graceful failure recovery with user feedback
-- **CORS Resolution**: Seamless browser-to-API communication
+- **~50 lines total**: Minimal surface area, maximum reliability
+- **TDD Validated**: 18 comprehensive tests, all passing
+- **Legacy Compatibility**: `/api/chat` endpoint maintained
 
 #### 2. Advanced React Application (Port 5173)
 ```bash
@@ -52,19 +59,22 @@ npm run dev
 - **Cytoscape.js Graph Engine**: Professional DAG visualization with drag operations
 - **Sophisticated State Management**: Complex branching with merge conflict resolution
 - **Real-time Interaction System**: Drag feedback, visual state updates, branch validation
+- **Token Economics Suite**: Real-time usage tracking, cost analytics, tokenizer tools
 - **Performance Optimization**: Efficient rendering for large conversation networks
 
 ### Conversation Mental Model
 ```javascript
-// v0.3 Advanced Operations
+// v0.4 Advanced Operations with Token Economics
 graph.addConversation(prompt, response, {temperature: 0.7, model: 'claude-sonnet-4'})
 graph.createBranch(parentId, branchType)
-graph.dragToMerge(sourceNode, targetNode)  // NEW: Visual merge operations
-graph.validateHierarchicalMerge(source, target)  // NEW: Prevents graph corruption
-graph.exportWithMergeHistory()  // NEW: Complete topology export
+graph.dragToMerge(sourceNode, targetNode)  // Visual merge operations
+graph.validateHierarchicalMerge(source, target)  // Prevents graph corruption
+graph.exportWithMergeHistory()  // Complete topology export
+tokenService.trackUsage(tokens, cost, model)  // NEW: Token economics tracking
+tokenizerService.analyzeContent(text)  // NEW: Content analysis tools
 ```
 
-## Quick Start v0.3
+## Quick Start v0.4
 
 ### Prerequisites
 ```bash
@@ -73,11 +83,12 @@ cp .env.example .env
 # Add your Claude API key to .env
 ```
 
-### 1. Start Enhanced Proxy Server
+### 1. Start Nuclear Proxy Server v2.0
 ```bash
 npm run dev:proxy
 ```
-🟢 **Enhanced proxy operational on http://localhost:3001**
+🟢 **Nuclear proxy operational on http://localhost:3001**
+- Nuclear transparency active
 - Sonnet 4 + Opus 4 support active
 - Dynamic timeout scaling enabled
 - Temperature passthrough operational
@@ -94,9 +105,9 @@ npm run build     # Optimized production bundle
 npm run preview   # Local production testing
 ```
 
-**Both servers must be running simultaneously for full v0.3 functionality.**
+**Both servers must be running simultaneously for full v0.4 functionality.**
 
-## v0.3 Operational Features
+## v0.4 Operational Features
 
 ### 🌡️ Advanced AI Control System
 - **Real-time Temperature Control**: Creativity slider (0.1=Focused ↔ 1.0=Creative)
@@ -122,6 +133,13 @@ npm run preview   # Local production testing
 - **Hierarchical Auto-Layout**: Intelligent organization of complex conversation trees
 - **Performance Optimized**: Efficient rendering for 100+ node networks
 
+### 💰 Token Economics Suite
+- **Real-time Usage Tracking**: Live token counting with cost analytics
+- **TokenUsageDisplay**: Visual token consumption and cost breakdown
+- **TokenizerPopup**: Interactive content analysis and tokenization tools
+- **Cost Optimization**: Model-aware pricing with usage recommendations
+- **Historical Analytics**: Token usage patterns and cost trends
+
 ### 💎 Professional User Experience
 - **Perfect Conversation Flow**: Intuitive `1> >1 2> >2 2.1> >2.1` numbering
 - **Comprehensive Theming**: Dark/Light modes with smooth transitions
@@ -130,7 +148,7 @@ npm run preview   # Local production testing
 - **Real-time Analytics**: Live token counting, processing time, complexity metrics
 - **Persistent Storage**: Full conversation + merge state preservation
 
-## v0.3 Development Excellence
+## v0.4 Development Excellence
 
 ### Production-Grade Quality Assurance
 - **Test Coverage**: 25+ comprehensive tests with drag-to-merge validation
@@ -156,13 +174,15 @@ npm run dev:proxy & npm run dev  # Full system validation
 
 **All systems verified operational. Ready for advanced conversational AI exploration.**
 
-## Beyond v0.3: The Knowledge Cartography Vision
+## Beyond v0.4: The Knowledge Cartography Vision
 
-### ✅ Achieved in v0.3.1
+### ✅ Achieved in v0.4.0
 - Operational drag-to-merge conversation branching
 - Real-time graph visualization with professional DAG rendering
 - Advanced AI control with temperature tuning and extended thinking
 - Production-grade architecture with comprehensive testing
+- **Nuclear Proxy v2.0**: Complete transparency with zero validation complexity
+- **Token Economics Suite**: Real-time usage tracking, cost analytics, tokenizer tools
 - **Critical Bug Fixes**: Resolved branch selection UI state conflicts
 - **Performance Optimization**: Eliminated render loops and event handler issues
 - **Session API Key Integration**: Volatile key management with dark mode UI
@@ -177,22 +197,23 @@ npm run dev:proxy & npm run dev  # Full system validation
 - **Search & Discovery**: Full-text search, topic clustering, insight recommendations
 
 ### The Meta-Achievement
-**DAGGER v0.3 demonstrates its own value proposition**: This documentation was created using the exact branching/merging cognitive patterns that DAGGER enables. The tool validates itself through its own development process.
+**DAGGER v0.4 demonstrates its own value proposition**: This documentation was created using the exact branching/merging cognitive patterns that DAGGER enables. The tool validates itself through its own development process.
 
 ---
 
 ---
 
-## Status: ✅ DAGGER v0.3.1 - PRODUCTION OPERATIONAL
+## Status: ✅ DAGGER v0.4.0 - PRODUCTION OPERATIONAL
 
-**Advanced conversational AI platform with drag-to-merge knowledge cartography**
+**Advanced conversational AI platform with nuclear transparency and token economics**
 
-### Recent Improvements (v0.3.1)
-- ✅ **Branch Selection UI**: Fixed radio button conflicts with direct click handlers
-- ✅ **Session API Key**: Implemented volatile key management with dark mode styling  
-- ✅ **Performance**: Resolved infinite render loops and stabilized event handlers
-- ✅ **Graph Synchronization**: Fixed node selection and view state management
-- ✅ **User Experience**: Enhanced visual feedback and interaction reliability
+### Recent Improvements (v0.4.0)
+- ✅ **Nuclear Proxy v2.0**: Complete transparency with ~50 lines, zero validation complexity
+- ✅ **Token Economics Suite**: Real-time usage tracking, cost analytics, tokenizer analysis
+- ✅ **TokenUsageDisplay**: Visual token consumption and cost breakdown components
+- ✅ **TokenizerPopup**: Interactive content analysis and tokenization tools
+- ✅ **Infrastructure Victory**: Legacy proxy complexity eliminated, maximum reliability achieved
+- ✅ **TDD Validated**: 18+ comprehensive proxy tests, all operational systems verified
 
 ### Development Notes
 ```bash
@@ -214,4 +235,4 @@ npm run build                      # Production bundle verification
 
 **Strategic Outcome**: DAGGER distributed cognition operates with zero infrastructure friction.
 
-*Tested through distributed cognition. Validated by actual usage. Debugged with systematic precision. Nuclear transparency achieved. Ready for cognitive amplification at scale.*
+*Tested through distributed cognition. Validated by actual usage. Debugged with systematic precision. Nuclear transparency achieved with token economics integration. Ready for cognitive amplification at scale.*

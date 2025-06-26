@@ -1,0 +1,30 @@
+{
+  "name": "dagger-proxy-v2-nuclear",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest",
+    "test:unit": "vitest tests/unit",
+    "test:integration": "vitest tests/integration", 
+    "test:e2e": "vitest tests/e2e",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage",
+    "dev": "node src/proxy.js",
+    "start": "node src/proxy.js"
+  },
+  "type": "module",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.4",
+    "supertest": "^7.1.1",
+    "vitest": "^3.2.4"
+  }
+}

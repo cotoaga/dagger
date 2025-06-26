@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { formatISODateTime } from '../models/GraphModel.js'
+import { TokenizerPopup } from './TokenizerPopup.jsx'
 
 export function DaggerInputDisplay({ interaction, onCopy, onFork, showActions = false }) {
   // Auto-collapse long inputs (more than 3 lines)
@@ -8,6 +9,9 @@ export function DaggerInputDisplay({ interaction, onCopy, onFork, showActions = 
     const content = interaction.content.replace(/\*\*User:\*\* /, '')
     return content.split('\n').length > 3
   })
+
+  // Tokenizer popup state
+  const [isTokenizerOpen, setIsTokenizerOpen] = useState(false)
 
   const getPreviewContent = useCallback((content) => {
     if (!content || !isCollapsed) return content
@@ -24,6 +28,10 @@ export function DaggerInputDisplay({ interaction, onCopy, onFork, showActions = 
     setIsCollapsed(!isCollapsed)
   }, [isCollapsed])
 
+  const handleInspectTokens = useCallback(() => {
+    setIsTokenizerOpen(true)
+  }, [])
+
   const cleanContent = interaction.content.replace(/\*\*User:\*\* /, '')
   const isLongContent = cleanContent.split('\n').length > 3
 
@@ -35,6 +43,13 @@ export function DaggerInputDisplay({ interaction, onCopy, onFork, showActions = 
           <span className="timestamp">{formatISODateTime(interaction.timestamp)}</span>
         </div>
         <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button 
+            onClick={handleInspectTokens}
+            className="action-btn tokenizer-btn"
+            title="Inspect Tokens - Analyze tokenization breakdown"
+          >
+            🔍 Inspect Tokens
+          </button>
           {isLongContent && (
             <button 
               onClick={toggleCollapse}
@@ -53,6 +68,14 @@ export function DaggerInputDisplay({ interaction, onCopy, onFork, showActions = 
       >
         {getPreviewContent(cleanContent)}
       </div>
+      
+      {/* Tokenizer Popup */}
+      <TokenizerPopup
+        isOpen={isTokenizerOpen}
+        onClose={() => setIsTokenizerOpen(false)}
+        content={cleanContent}
+        model="claude-sonnet-4-20250514"
+      />
     </div>
   )
 }
@@ -72,9 +95,10 @@ const styles = `
 }
 
 .header-actions {
-  display: flex;
+  display: flex !important;
   align-items: center;
   gap: 8px;
+  visibility: visible !important;
 }
 
 .action-btn {
@@ -102,6 +126,18 @@ const styles = `
 .copy-btn:hover {
   background: #3b82f6;
   border-color: #3b82f6;
+  color: white;
+}
+
+.tokenizer-btn {
+  background: #fef3c7;
+  border-color: #d69e2e;
+  color: #92400e;
+}
+
+.tokenizer-btn:hover {
+  background: #d69e2e;
+  border-color: #d69e2e;
   color: white;
 }
 
@@ -153,6 +189,12 @@ const styles = `
 .app.dark .action-btn:hover {
   background: #4a5568;
   color: #e2e8f0;
+}
+
+.app.dark .tokenizer-btn:hover {
+  background: #d69e2e;
+  border-color: #d69e2e;
+  color: white;
 }
 
 .app.dark .interaction-content.collapsed::after {
