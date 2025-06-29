@@ -19,6 +19,7 @@ import { ConversationChainBuilder } from './services/ConversationChainBuilder.js
 import { MessageFormatter } from './services/MessageFormatter.js'
 import { TokenGauge } from './components/TokenGauge.jsx'
 import { TokenUsageDisplay, SessionTokenSummary } from './components/TokenUsageDisplay.jsx'
+import { TokenizerPopup } from './components/TokenizerPopup.jsx'
 import './App.css'
 
 // Intellectually honest status messages for LLMs
@@ -76,6 +77,30 @@ function App() {
   const [branchSourceId, setBranchSourceId] = useState(null)
   const [currentBranchContext, setCurrentBranchContext] = useState(null)
   const conversationRefs = useRef({})
+  
+  // Tokenizer popup state
+  const [tokenizerState, setTokenizerState] = useState({
+    isOpen: false,
+    content: '',
+    conversationId: null
+  })
+
+  // Tokenizer handlers
+  const handleOpenTokenizer = useCallback((content, conversationId) => {
+    setTokenizerState({
+      isOpen: true,
+      content: content,
+      conversationId: conversationId
+    })
+  }, [])
+
+  const handleCloseTokenizer = useCallback(() => {
+    setTokenizerState({
+      isOpen: false,
+      content: '',
+      conversationId: null
+    })
+  }, [])
   
   // Welcome screen state
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(() => {
@@ -1373,14 +1398,15 @@ This personality framework helps you understand my thinking patterns and communi
                     onCopy={() => copyConversation(conversation)}
                     onBranch={handleBranchConversation}
                     showActions={conversation.response && conversation.status === 'complete'}
+                    onOpenTokenizer={handleOpenTokenizer}
                   />
                   
-                  {/* Selection indicator for selected conversation */}
+                  {/* Unified Toolbar for selected conversation */}
                   {isSelected && (
-                    <div className="selection-indicator">
-                      <span className="selection-badge">📍 SELECTED</span>
+                    <div className="unified-toolbar" data-testid="unified-toolbar">
+                      <span className="unified-toolbar-btn selection-badge">📍 SELECTED</span>
                       <button 
-                        className="center-in-graph-btn"
+                        className="unified-toolbar-btn center-in-graph-btn"
                         onClick={(e) => {
                           e.stopPropagation();
                           setCurrentView('graph');
@@ -1389,6 +1415,32 @@ This personality framework helps you understand my thinking patterns and communi
                       >
                         🎯 Center in Graph
                       </button>
+                      <button 
+                        className="unified-toolbar-btn nav-btn-style"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenTokenizer(conversation.prompt, conversation.id);
+                        }}
+                        title="Inspect Tokens - Analyze tokenization breakdown"
+                      >
+                        🔍 Inspect Tokens
+                      </button>
+                      {conversation.prompt && conversation.prompt.split('\n').length > 3 && (
+                        <button 
+                          className="unified-toolbar-btn collapse-button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Toggle collapse state for this conversation
+                            const toggleEvent = new CustomEvent('toggleConversationCollapse', {
+                              detail: { conversationId: conversation.id }
+                            });
+                            window.dispatchEvent(toggleEvent);
+                          }}
+                          title="Expand/Collapse conversation content"
+                        >
+                          📖 Expand
+                        </button>
+                      )}
                     </div>
                   )}
                   
@@ -1546,6 +1598,14 @@ This personality framework helps you understand my thinking patterns and communi
           }}
         />
       )}
+
+      {/* Global Tokenizer Popup */}
+      <TokenizerPopup
+        isOpen={tokenizerState.isOpen}
+        onClose={handleCloseTokenizer}
+        content={tokenizerState.content}
+        model={selectedModel}
+      />
         </>
       )}
     </div>

@@ -1,8 +1,7 @@
 import { useState, useCallback } from 'react'
 import { formatISODateTime } from '../models/GraphModel.js'
-import { TokenizerPopup } from './TokenizerPopup.jsx'
 
-export function DaggerInputDisplay({ interaction, onCopy, onFork, showActions = false }) {
+export function DaggerInputDisplay({ interaction, onCopy, onFork, showActions = false, onOpenTokenizer }) {
   // Auto-collapse long inputs (more than 3 lines)
   const [isCollapsed, setIsCollapsed] = useState(() => {
     if (!interaction?.content) return false
@@ -10,8 +9,7 @@ export function DaggerInputDisplay({ interaction, onCopy, onFork, showActions = 
     return content.split('\n').length > 3
   })
 
-  // Tokenizer popup state
-  const [isTokenizerOpen, setIsTokenizerOpen] = useState(false)
+  // Note: Tokenizer popup state is now managed at App level
 
   const getPreviewContent = useCallback((content) => {
     if (!content || !isCollapsed) return content
@@ -29,8 +27,11 @@ export function DaggerInputDisplay({ interaction, onCopy, onFork, showActions = 
   }, [isCollapsed])
 
   const handleInspectTokens = useCallback(() => {
-    setIsTokenizerOpen(true)
-  }, [])
+    if (onOpenTokenizer) {
+      const cleanContent = interaction.content.replace(/\*\*User:\*\* /, '')
+      onOpenTokenizer(cleanContent, interaction.id)
+    }
+  }, [onOpenTokenizer, interaction.content, interaction.id])
 
   const cleanContent = interaction.content.replace(/\*\*User:\*\* /, '')
   const isLongContent = cleanContent.split('\n').length > 3
@@ -43,21 +44,26 @@ export function DaggerInputDisplay({ interaction, onCopy, onFork, showActions = 
           <span className="timestamp">{formatISODateTime(interaction.timestamp)}</span>
         </div>
         <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button 
-            onClick={handleInspectTokens}
-            className="action-btn tokenizer-btn"
-            title="Inspect Tokens - Analyze tokenization breakdown"
-          >
-            🔍 Inspect Tokens
-          </button>
-          {isLongContent && (
-            <button 
-              onClick={toggleCollapse}
-              className="collapse-button input-collapse"
-              title={isCollapsed ? "Expand input" : "Collapse input"}
-            >
-              {isCollapsed ? '📖 Expand' : '📋 Collapse'}
-            </button>
+          {/* Buttons are now handled by unified toolbar when conversation is selected */}
+          {!showActions && (
+            <>
+              <button 
+                onClick={handleInspectTokens}
+                className="action-btn nav-btn-style"
+                title="Inspect Tokens - Analyze tokenization breakdown"
+              >
+                🔍 Inspect Tokens
+              </button>
+              {isLongContent && (
+                <button 
+                  onClick={toggleCollapse}
+                  className="collapse-button input-collapse"
+                  title={isCollapsed ? "Expand input" : "Collapse input"}
+                >
+                  {isCollapsed ? '📖 Expand' : '📋 Collapse'}
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -68,14 +74,6 @@ export function DaggerInputDisplay({ interaction, onCopy, onFork, showActions = 
       >
         {getPreviewContent(cleanContent)}
       </div>
-      
-      {/* Tokenizer Popup */}
-      <TokenizerPopup
-        isOpen={isTokenizerOpen}
-        onClose={() => setIsTokenizerOpen(false)}
-        content={cleanContent}
-        model="claude-sonnet-4-20250514"
-      />
     </div>
   )
 }
@@ -129,16 +127,28 @@ const styles = `
   color: white;
 }
 
-.tokenizer-btn {
-  background: #fef3c7;
-  border-color: #d69e2e;
-  color: #92400e;
+/* Professional grey button styling matching nav-btn */
+.nav-btn-style {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.85em;
+  font-weight: 500;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.tokenizer-btn:hover {
-  background: #d69e2e;
-  border-color: #d69e2e;
-  color: white;
+.nav-btn-style:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--accent-color);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .input-collapse {
@@ -191,10 +201,9 @@ const styles = `
   color: #e2e8f0;
 }
 
-.app.dark .tokenizer-btn:hover {
-  background: #d69e2e;
-  border-color: #d69e2e;
-  color: white;
+/* Dark mode for nav-btn-style uses CSS variables automatically */
+.app.dark .nav-btn-style {
+  /* CSS variables automatically handle dark mode theming */
 }
 
 .app.dark .interaction-content.collapsed::after {

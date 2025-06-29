@@ -3,6 +3,8 @@ import cytoscape from 'cytoscape';
 import dagre from 'cytoscape-dagre';
 import { formatISODateTime } from '../models/GraphModel.js';
 import NavigationOverlay from './NavigationOverlay.jsx';
+import { SummaryGenerator } from './SummaryGenerator.jsx';
+import { claudeAPI } from '../services/ClaudeAPI.js';
 
 // Register dagre layout
 cytoscape.use(dagre);
@@ -486,6 +488,21 @@ export function GraphView({ conversations, currentConversationId, onConversation
         }
       },
 
+      // Temporary merge edge - orange dashed line for drag feedback
+      {
+        selector: 'edge.temporary-merge-edge',
+        style: {
+          'width': 4,
+          'line-color': '#f59e0b', // amber-500 (orange)
+          'target-arrow-color': '#f59e0b',
+          'target-arrow-shape': 'triangle',
+          'curve-style': 'bezier',
+          'line-style': 'dashed',
+          'opacity': 0.8,
+          'z-index': 100 // Ensure it appears above other edges
+        }
+      },
+
       // Branch edges - subtle gray dashed lines (default)
       {
         selector: 'edge.branch-edge',
@@ -575,8 +592,22 @@ export function GraphView({ conversations, currentConversationId, onConversation
       {
         selector: 'node.end-node',
         style: {
-          'border-color': '#f59e0b',
-          'border-width': 4
+          'border-color': '#f59e0b', // amber-500 (orange)
+          'border-width': 4,
+          'border-style': 'solid',
+          // Add subtle pulsing animation effect
+          'transition-property': 'border-color, border-width',
+          'transition-duration': '0.3s'
+        }
+      },
+
+      // Enhanced end node when not being dragged (subtle glow effect)
+      {
+        selector: 'node.end-node:hover',
+        style: {
+          'border-color': '#f97316', // amber-600 (brighter orange)
+          'border-width': 5,
+          'box-shadow': '0 0 20px #f59e0b'
         }
       },
 
@@ -626,6 +657,79 @@ export function GraphView({ conversations, currentConversationId, onConversation
     }
     return createGraphElements(conversations);
   }, [conversations]);
+
+  // Handle merge with optional summarization
+  const handleMergeWithSummarization = useCallback(async (sourceNodeId, targetNodeId) => {
+    try {
+      const sourceConv = graphModel?.getConversation(sourceNodeId);
+      if (!sourceConv) {
+        throw new Error(`Source conversation ${sourceNodeId} not found`);
+      }
+
+      // Check if source is a branch that should be summarized
+      const shouldSummarize = graphModel?.isBranchId(sourceConv.displayNumber);
+      
+      if (shouldSummarize) {
+        console.log('📝 Branch merge detected - generating summary...');
+        
+        // Get the branch thread for summarization
+        const branchThread = graphModel?.getBranchThread(sourceConv.displayNumber);
+        if (branchThread && branchThread.length > 0) {
+          
+          // Format conversation thread for KHAOS summarization
+          const formattedThread = branchThread.map(conv => ({
+            id: conv.displayNumber,
+            content: {
+              prompt: conv.prompt,
+              response: conv.response
+            }
+          }));
+
+          console.log('📝 Formatted thread for summarization:', formattedThread.length, 'conversations');
+          
+          try {
+            // Use KHAOS-Brief for concise branch summaries
+            const summaryType = branchThread.length > 3 ? 'detail' : 'brief';
+            console.log(`📝 Generating ${summaryType} summary for branch thread...`);
+            
+            // TODO: Integrate with actual SummaryGenerator component
+            // For now, we'll simulate the summary generation
+            const mockSummary = `**Essential Insights from Branch ${sourceConv.displayNumber}:**\nSummarized ${branchThread.length} conversations exploring: ${branchThread[0]?.prompt?.substring(0, 50)}...`;
+            
+            console.log('📝 Generated summary:', mockSummary);
+            
+            // Call the merge with summary included
+            onMergeNodesRef.current && onMergeNodesRef.current(sourceNodeId, targetNodeId, {
+              summary: mockSummary,
+              summaryType: summaryType,
+              branchThread: formattedThread
+            });
+            
+            console.log('✅ Merge with summary successful!');
+            
+          } catch (summaryError) {
+            console.warn('⚠️ Summary generation failed, proceeding with merge:', summaryError.message);
+            
+            // Fall back to merge without summary
+            onMergeNodesRef.current && onMergeNodesRef.current(sourceNodeId, targetNodeId);
+            console.log('✅ Merge completed (without summary)');
+          }
+        } else {
+          // No branch thread found, proceed with regular merge
+          onMergeNodesRef.current && onMergeNodesRef.current(sourceNodeId, targetNodeId);
+          console.log('✅ Merge completed (no branch thread)');
+        }
+      } else {
+        // Not a branch merge, proceed normally
+        onMergeNodesRef.current && onMergeNodesRef.current(sourceNodeId, targetNodeId);
+        console.log('✅ Regular merge completed');
+      }
+      
+    } catch (error) {
+      console.error('❌ Merge with summarization failed:', error);
+      alert(`Merge failed: ${error.message}`);
+    }
+  }, [graphModel, onMergeNodesRef]);
 
   // RESTORED VERSION - With full event handlers and debugging
   useEffect(() => {
@@ -681,9 +785,10 @@ export function GraphView({ conversations, currentConversationId, onConversation
       }
     });
 
-    // Improved drag-to-merge functionality
+    // Enhanced drag-to-merge functionality with visual feedback
     let dragSourceNode = null;
     let validDropTarget = null;
+    let temporaryMergeEdge = null;
 
     // Start drag - only for end nodes
     cyInstance.on('grab', 'node', (event) => {
@@ -710,15 +815,19 @@ export function GraphView({ conversations, currentConversationId, onConversation
       }
     });
 
-    // During drag - detect hover over valid targets
+    // During drag - detect hover over valid targets and show merge edges
     cyInstance.on('drag', 'node', (event) => {
       if (!dragSourceNode || !graphModel) return;
       
       const draggedNode = event.target;
       const position = draggedNode.position();
       
-      // Clear previous hover states
+      // Clear previous hover states and temporary merge edge
       cyInstance.nodes('.merge-target-hover').removeClass('merge-target-hover');
+      if (temporaryMergeEdge) {
+        cyInstance.remove(temporaryMergeEdge);
+        temporaryMergeEdge = null;
+      }
       validDropTarget = null;
       
       // Find nodes within drop distance
@@ -735,6 +844,19 @@ export function GraphView({ conversations, currentConversationId, onConversation
           targetNode.addClass('merge-target-hover');
           validDropTarget = targetNode.id();
           console.log('🎯 Hovering over valid target:', validDropTarget);
+          
+          // Add temporary merge edge visualization
+          const mergeEdgeElement = {
+            data: {
+              id: `temp-merge-${dragSourceNode}-${validDropTarget}`,
+              source: dragSourceNode,
+              target: validDropTarget
+            },
+            classes: 'temporary-merge-edge'
+          };
+          
+          temporaryMergeEdge = cyInstance.add(mergeEdgeElement);
+          console.log('🔗 Added temporary merge edge');
         }
       });
     });
@@ -746,19 +868,32 @@ export function GraphView({ conversations, currentConversationId, onConversation
       if (dragSourceNode && validDropTarget) {
         console.log('🔀 Attempting merge:', dragSourceNode, '→', validDropTarget);
         
-        try {
-          onMergeNodesRef.current && onMergeNodesRef.current(dragSourceNode, validDropTarget);
-          console.log('✅ Merge successful!');
-        } catch (error) {
-          console.error('❌ Merge failed:', error);
-          alert(`Merge failed: ${error.message}`);
-        }
+        // Handle merge with optional summarization
+        handleMergeWithSummarization(dragSourceNode, validDropTarget);
       } else if (dragSourceNode) {
-        console.log('❌ No valid drop target found');
+        console.log('❌ No valid drop target found - triggering snap-back');
+        
+        // Snap-back behavior: Use layout re-run instead of position tracking
+        const snapBackLayout = cyInstance.layout({
+          name: 'dagre',
+          rankDir: 'TB',
+          spacingFactor: 1.5,
+          nodeSep: 80,
+          rankSep: 120,
+          animate: true,
+          animationDuration: 500
+        });
+        snapBackLayout.run();
+        console.log('🔄 Snap-back layout triggered');
       }
       
-      // Clean up all classes
+      // Clean up all visual states
       cyInstance.nodes().removeClass('dragging-source valid-merge-target merge-target-hover');
+      if (temporaryMergeEdge) {
+        cyInstance.remove(temporaryMergeEdge);
+        temporaryMergeEdge = null;
+        console.log('🔗 Removed temporary merge edge');
+      }
       dragSourceNode = null;
       validDropTarget = null;
       console.log('🎯 About to update drag source:', null);

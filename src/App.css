@@ -2624,49 +2624,83 @@ html.dark {
   scroll-margin-top: 120px; /* Account for fixed headers */
 }
 
-/* Selection indicator */
-.selection-indicator {
+/* Unified Toolbar - Professional single-row layout */
+.unified-toolbar {
   position: absolute;
   top: -12px;
   right: 16px;
   display: flex;
   gap: 8px;
   z-index: 11;
-}
-
-.selection-badge {
-  background: #3b82f6;
-  color: white;
-  padding: 4px 12px;
-  border-radius: 4px;
-  font-size: 0.8em;
-  font-weight: 600;
-  display: flex;
   align-items: center;
-  gap: 4px;
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+  flex-wrap: nowrap;
+  overflow: auto;
 }
 
-.center-in-graph-btn {
-  background: #059669;
-  color: white;
-  border: none;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.8em;
+/* Unified styling for all toolbar buttons */
+.unified-toolbar-btn {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.85em;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
   align-items: center;
   gap: 4px;
-  font-weight: 500;
-  box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  height: 32px; /* Consistent height */
 }
 
-.center-in-graph-btn:hover {
-  background: #047857;
+.unified-toolbar-btn:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--accent-color);
   transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Special styling for SELECTED badge */
+.unified-toolbar-btn.selection-badge {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+  cursor: default;
+}
+
+.unified-toolbar-btn.selection-badge:hover {
+  background: #3b82f6;
+  transform: none;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+/* Center in Graph button styling */
+.unified-toolbar-btn.center-in-graph-btn {
+  background: #059669;
+  color: white;
+  border-color: #059669;
+}
+
+.unified-toolbar-btn.center-in-graph-btn:hover {
+  background: #047857;
+  border-color: #047857;
   box-shadow: 0 4px 8px rgba(5, 150, 105, 0.3);
+}
+
+/* Collapse button styling */
+.unified-toolbar-btn.collapse-button {
+  background: #8b5cf6;
+  color: white;
+  border-color: #8b5cf6;
+}
+
+.unified-toolbar-btn.collapse-button:hover {
+  background: #7c3aed;
+  border-color: #7c3aed;
+  box-shadow: 0 4px 8px rgba(139, 92, 246, 0.3);
 }
 
 /* Quick select button for non-selected cards */
@@ -2737,16 +2771,16 @@ html.dark {
     transform: scale(1.01);
   }
   
-  .selection-indicator {
+  .unified-toolbar {
     top: -8px;
     right: 8px;
     gap: 6px;
   }
   
-  .selection-badge,
-  .center-in-graph-btn {
-    padding: 3px 8px;
+  .unified-toolbar-btn {
+    padding: 4px 8px;
     font-size: 0.75em;
+    height: 28px; /* Smaller height for mobile */
   }
   
   .conversation-card-focus-target {
