@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import Logger from '../utils/logger.js';
 
 // ISO DateTime formatting utilities
 export function formatISODateTime(timestamp) {
@@ -236,20 +237,54 @@ export class GraphModel {
         return;
       }
       
+      console.group('🔄 GraphModel.loadFromStorage() Debug');
+      
       const data = JSON.parse(stored);
+      console.log('Step 1 - Raw data keys:', Object.keys(data));
+      console.log('Step 1.1 - Raw data structure:', {
+        conversations: data.conversations?.length || 'missing',
+        branches: data.branches?.length || 'missing',
+        mainThread: data.mainThread?.length || 'missing',
+        mergedBranches: data.mergedBranches?.length || 'missing',
+        conversationCounter: data.conversationCounter || 'missing'
+      });
       
       // Restore conversations
       this.conversations = new Map(data.conversations || []);
+      console.log('Step 2 - Conversations restored:', this.conversations.size);
+      
       this.mainThread = data.mainThread || [];
+      console.log('Step 3 - Main thread restored:', this.mainThread.length);
+      
       this.branches = new Map(data.branches || []);
+      console.log('Step 4 - Branches restored:', this.branches.size);
+      
       this.conversationCounter = data.conversationCounter || 0;
+      console.log('Step 5 - Counter restored:', this.conversationCounter);
+      
       this.mergedBranches = new Set(data.mergedBranches || []);
       this.mergeHistory = new Map(data.mergeHistory || []);
       
+      // Check for branch conversations in the restored data
+      const allConversations = Array.from(this.conversations.values());
+      const branchConvs = allConversations.filter(c => c.parentId || (c.displayNumber && c.displayNumber.toString().includes('.')));
+      console.log('Step 6 - Branch conversations found after restore:', branchConvs.length);
+      
+      if (branchConvs.length > 0) {
+        console.log('Step 6.1 - Branch conversation examples:', branchConvs.slice(0, 3).map(c => ({
+          id: c.id,
+          displayNumber: c.displayNumber,
+          parentId: c.parentId,
+          prompt: c.prompt?.substring(0, 50) + '...'
+        })));
+      }
+      
       console.log(`✅ Loaded ${this.conversations.size} conversations from localStorage`);
+      console.groupEnd();
       
     } catch (error) {
       console.error('❌ Failed to load from localStorage:', error);
+      console.groupEnd();
       // Don't throw - just start fresh
     }
   }
@@ -284,14 +319,8 @@ export class GraphModel {
       });
     
     // DIAGNOSTIC: Log the branch counting process
-    console.log('🔍 BRANCH ID GENERATION DEBUG:', {
+    Logger.debug('BRANCH ID GENERATION', {
       parentDisplayNumber,
-      totalConversations: allConversations.length,
-      existingBranchesFromParent: existingBranches.map(b => ({
-        id: b.id,
-        displayNumber: b.displayNumber,
-        parentDisplayNumber: b.parentDisplayNumber
-      })),
       existingBranchCount: existingBranches.length
     });
     
@@ -499,6 +528,32 @@ export class GraphModel {
    * Get all conversations including branches for graph display
    */
   getAllConversationsWithBranches() {
+    // Force fresh load if data seems incomplete (session restoration fix)
+    if (this.conversations.size === 0 && localStorage.getItem('dagger-conversations-v2')) {
+      console.log('🔄 Detected incomplete state during getAllConversationsWithBranches, forcing reload...');
+      this.loadFromStorage();
+    }
+    
+    // Additional check: if we have localStorage data but no branch conversations, reload
+    const currentConversations = Array.from(this.conversations.values());
+    const branchCount = currentConversations.filter(c => c.parentId || (c.displayNumber && c.displayNumber.toString().includes('.'))).length;
+    
+    if (branchCount === 0 && localStorage.getItem('dagger-conversations-v2')) {
+      const storedData = localStorage.getItem('dagger-conversations-v2');
+      try {
+        const parsed = JSON.parse(storedData);
+        const storedBranchCount = parsed.conversations?.filter(([id, conv]) => conv.parentId || conv.displayNumber?.includes('.')).length || 0;
+        
+        if (storedBranchCount > 0) {
+          console.log('🔄 Detected missing branches in memory but present in storage, forcing reload...');
+          console.log(`Storage has ${storedBranchCount} branches, memory has ${branchCount}`);
+          this.loadFromStorage();
+        }
+      } catch (error) {
+        console.warn('⚠️ Could not parse localStorage for branch check:', error);
+      }
+    }
+    
     return Array.from(this.conversations.values())
       .sort((a, b) => {
         const aParts = this.parseHierarchicalId(a.displayNumber);
@@ -549,20 +604,66 @@ export class GraphModel {
    * Get all conversations in a branch thread
    */
   getBranchThread(displayNumber) {
-    const branchPrefix = this.getBranchPrefix(displayNumber);
+    console.group('🔍 getBranchThread DEBUG');
     
-    return Array.from(this.conversations.values())
-      .filter(conv => {
-        const convDisplay = String(conv.displayNumber);
-        return convDisplay.startsWith(branchPrefix);
-      })
-      .sort((a, b) => {
-        const aParts = String(a.displayNumber).split('.');
-        const bParts = String(b.displayNumber).split('.');
-        const aLast = parseInt(aParts[aParts.length - 1]);
-        const bLast = parseInt(bParts[bParts.length - 1]);
-        return aLast - bLast;
-      });
+    console.log('Input displayNumber:', displayNumber, typeof displayNumber);
+    
+    // Step 1: Check getBranchPrefix
+    const branchPrefix = this.getBranchPrefix(displayNumber);
+    console.log('Step 1 - branchPrefix:', branchPrefix);
+    
+    // Step 2: Check this.conversations
+    console.log('Step 2 - this.conversations:', {
+      type: typeof this.conversations,
+      isMap: this.conversations instanceof Map,
+      size: this.conversations.size,
+      firstKey: Array.from(this.conversations.keys())[0],
+      firstValue: Array.from(this.conversations.values())[0]
+    });
+    
+    // Step 3: Check Array.from conversion
+    const conversationsArray = Array.from(this.conversations.values());
+    console.log('Step 3 - conversationsArray:', {
+      type: typeof conversationsArray,
+      isArray: Array.isArray(conversationsArray),
+      length: conversationsArray.length
+    });
+    
+    // Step 4: Check filter operation
+    const filtered = conversationsArray.filter(conv => {
+      const convDisplay = String(conv.displayNumber);
+      const matches = convDisplay.startsWith(branchPrefix);
+      if (matches) {
+        console.log('Filter match:', { convDisplay, branchPrefix, conv });
+      }
+      return matches;
+    });
+    
+    console.log('Step 4 - filtered result:', {
+      type: typeof filtered,
+      isArray: Array.isArray(filtered),
+      length: filtered.length,
+      items: filtered
+    });
+    
+    // Step 5: Check sort operation
+    const sorted = filtered.sort((a, b) => {
+      const aParts = String(a.displayNumber).split('.');
+      const bParts = String(b.displayNumber).split('.');
+      const aLast = parseInt(aParts[aParts.length - 1]);
+      const bLast = parseInt(bParts[bParts.length - 1]);
+      return aLast - bLast;
+    });
+    
+    console.log('Step 5 - final sorted result:', {
+      type: typeof sorted,
+      isArray: Array.isArray(sorted),
+      length: sorted.length,
+      result: sorted
+    });
+    
+    console.groupEnd();
+    return sorted;
   }
 
   /**
@@ -570,10 +671,12 @@ export class GraphModel {
    */
   getBranchPrefix(displayNumber) {
     const parts = String(displayNumber).split('.');
+    
     if (parts.length >= 3) {
       // "1.1.2" → "1.1."
       return parts.slice(0, 2).join('.') + '.';
     }
+    
     return displayNumber;
   }
 
@@ -982,6 +1085,54 @@ export class GraphModel {
     }
     
     return null;
+  }
+
+  /**
+   * Close a branch by marking it as merged
+   */
+  closeBranch(displayNumber) {
+    console.log('🔒 Closing branch:', displayNumber);
+    
+    if (!this.isBranchId(displayNumber)) {
+      console.warn('Cannot close main thread');
+      return false;
+    }
+    
+    const branchPrefix = this.getBranchPrefix(displayNumber);
+    this.mergedBranches.add(branchPrefix);
+    
+    console.log('✅ Branch closed:', branchPrefix);
+    this.saveToStorage();
+    return true;
+  }
+
+  /**
+   * Add a merge edge to track merge relationships
+   */
+  addMergeEdge(sourceNodeId, targetNodeId) {
+    console.log('🔗 Adding merge edge:', sourceNodeId, '→', targetNodeId);
+    
+    const sourceConv = this.conversations.get(sourceNodeId);
+    const targetConv = this.conversations.get(targetNodeId);
+    
+    if (!sourceConv || !targetConv) {
+      console.error('Cannot add merge edge: invalid node IDs');
+      return false;
+    }
+    
+    const mergeInfo = {
+      sourceId: sourceNodeId,
+      sourceDisplayNumber: sourceConv.displayNumber,
+      targetId: targetNodeId,
+      targetDisplayNumber: targetConv.displayNumber,
+      timestamp: Date.now()
+    };
+    
+    this.mergeHistory.set(sourceNodeId, mergeInfo);
+    
+    console.log('✅ Merge edge added:', mergeInfo);
+    this.saveToStorage();
+    return true;
   }
 }
 

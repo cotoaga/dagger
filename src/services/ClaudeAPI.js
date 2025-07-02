@@ -1,5 +1,6 @@
 import ConfigService from './ConfigService.js';
 import { MessageFormatter } from './MessageFormatter.js';
+import Logger from '../utils/logger.js';
 
 class ClaudeAPIClass {
   constructor() {
@@ -108,9 +109,19 @@ class ClaudeAPIClass {
    */
   async sendMessage(conversationHistory = [], userInput, options = {}) {
     try {
-      console.log('\n🔍 === UNIFIED MESSAGE SYSTEM ===');
-      console.log('📝 User input:', userInput);
-      console.log('⚙️ Options:', options);
+      Logger.debug('UNIFIED MESSAGE SYSTEM', {
+        userInput: userInput?.substring(0, 100) + '...',
+        options: Object.keys(options)
+      });
+      
+      // Support conversationHistory in options for different calling patterns
+      const workingHistory = options.conversationHistory || conversationHistory;
+      
+      Logger.debug('Conversation history source', {
+        fromParameter: conversationHistory?.length || 0,
+        fromOptions: options.conversationHistory?.length || 0,
+        usingHistory: workingHistory?.length || 0
+      });
       
       const model = options.model || this.model;
       const temperature = options.temperature !== undefined ? options.temperature : 0.7;
@@ -120,22 +131,31 @@ class ClaudeAPIClass {
       const apiKey = this.getApiKey();
       
       // Build messages using SINGLE formatter
-      const messages = MessageFormatter.buildConversationMessages(
-        conversationHistory,
-        userInput,
-        options.systemPrompt || null
-      );
+      let messages;
+      try {
+        messages = MessageFormatter.buildConversationMessages(
+          workingHistory,
+          userInput,
+          options.systemPrompt || null
+        );
+        Logger.debug('MessageFormatter succeeded');
+      } catch (error) {
+        Logger.error('MessageFormatter failed:', error);
+        throw error;
+      }
       
       // Validate messages before sending
       const validation = MessageFormatter.validateMessages(messages);
       if (!validation.valid) {
-        console.error('❌ Message validation failed:', validation.errors);
+        Logger.error('Message validation failed:', validation.errors);
         MessageFormatter.debugMessages(messages, options.context || 'API call');
         throw new Error(`Invalid message format: ${validation.errors.join(', ')}`);
       }
       
       // Debug logging
-      console.log(`🧠 API call with ${messages.length} messages in context: ${options.context || 'unknown'}`);
+      Logger.debug(`API call with ${messages.length} messages`, {
+        context: options.context || 'unknown'
+      });
       if (options.debug) {
         MessageFormatter.debugMessages(messages, options.context);
       }

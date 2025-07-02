@@ -16,7 +16,9 @@
  * }
  */
 
-export class MessageFormatter {
+import Logger from '../utils/logger.js';
+
+class MessageFormatter {
   
   /**
    * Create a properly formatted Claude API message
@@ -62,13 +64,51 @@ export class MessageFormatter {
   static buildConversationMessages(conversationHistory = [], newUserInput = null, systemPrompt = null) {
     const messages = []
     
+    Logger.debug('MessageFormatter.buildConversationMessages', {
+      conversationHistoryType: typeof conversationHistory,
+      conversationHistoryIsArray: Array.isArray(conversationHistory),
+      newUserInputType: typeof newUserInput,
+      systemPromptType: typeof systemPrompt
+    });
+    
     // Add system prompt if provided (personality prompts, etc.)
     if (systemPrompt && systemPrompt.trim()) {
       messages.push(this.createMessage('system', systemPrompt))
     }
     
+    // Add conversation history with defensive programming
+    let workingHistory = conversationHistory;
+    
+    if (!Array.isArray(conversationHistory)) {
+      Logger.debug('conversationHistory is not an array, attempting recovery');
+      
+      // Common recovery patterns
+      if (conversationHistory === null || conversationHistory === undefined) {
+        workingHistory = [];
+      }
+      else if (conversationHistory.conversations && Array.isArray(conversationHistory.conversations)) {
+        workingHistory = conversationHistory.conversations;
+      }
+      else if (conversationHistory.values && typeof conversationHistory.values === 'function') {
+        workingHistory = Array.from(conversationHistory.values());
+      }
+      else if (typeof conversationHistory === 'object') {
+        workingHistory = Object.values(conversationHistory);
+      }
+      else {
+        Logger.error('Cannot convert conversationHistory to array');
+        throw new Error(`conversationHistory is ${typeof conversationHistory}, expected array`);
+      }
+    }
+    
+    Logger.debug('Working with history', {
+      type: typeof workingHistory,
+      isArray: Array.isArray(workingHistory),
+      length: workingHistory.length
+    });
+    
     // Add conversation history (main thread + any branch history)
-    conversationHistory.forEach(conv => {
+    workingHistory.forEach(conv => {
       if (conv.input || conv.prompt) {
         const userContent = conv.input || conv.prompt
         messages.push(this.createMessage('user', userContent))
@@ -287,3 +327,5 @@ export class MessageFormatter {
     return conversationChain
   }
 }
+
+export { MessageFormatter };

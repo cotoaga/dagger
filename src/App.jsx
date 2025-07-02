@@ -22,6 +22,39 @@ import { TokenUsageDisplay, SessionTokenSummary } from './components/TokenUsageD
 import { TokenizerPopup } from './components/TokenizerPopup.jsx'
 import './App.css'
 
+// Dynamic session timer component
+function SessionTimer({ lastActivity }) {
+  const [remainingTime, setRemainingTime] = useState(null);
+  
+  useEffect(() => {
+    const updateTimer = () => {
+      const elapsed = Date.now() - lastActivity;
+      const remaining = Math.max(0, 30 * 60 * 1000 - elapsed); // 30 minutes
+      setRemainingTime(remaining);
+    };
+    
+    // Update immediately
+    updateTimer();
+    
+    // Update every second
+    const interval = setInterval(updateTimer, 1000);
+    
+    return () => clearInterval(interval);
+  }, [lastActivity]);
+  
+  const formatTimeRemaining = (ms) => {
+    if (ms <= 0) return '0 min';
+    const minutes = Math.ceil(ms / 60000);
+    return `${minutes} min`;
+  };
+  
+  return (
+    <span className="session-indicator">
+      🕒 Session expires in {formatTimeRemaining(remainingTime)}
+    </span>
+  );
+}
+
 // Intellectually honest status messages for LLMs
 const honestStatusMessages = [
   "Predicting the next word...",
@@ -178,13 +211,56 @@ function App() {
     checkApiKeyConfiguration();
   }, [checkApiKeyConfiguration]);
   
-  // Load conversations on mount (after API check)
+  // Load conversations on mount (after API check) with comprehensive state restoration debugging
   useEffect(() => {
     console.log('🔄 useEffect [apiKeyConfigured] triggered');
     if (apiKeyConfigured) {
-      const loadedConversations = graphModel.getAllConversations();
+      
+      console.group('🔍 Post-Reload localStorage Forensics');
+      
+      // Check what's actually in localStorage
+      const storedData = localStorage.getItem('dagger-conversations-v2');
+      console.log('Raw localStorage data exists:', !!storedData);
+      console.log('Raw data length:', storedData?.length);
+      
+      if (storedData) {
+        try {
+          const parsed = JSON.parse(storedData);
+          console.log('Parsed data structure:', {
+            conversations: parsed.conversations?.length || 'missing',
+            branches: parsed.branches?.length || 'missing', 
+            mainThread: parsed.mainThread?.length || 'missing',
+            mergedBranches: parsed.mergedBranches?.length || 'missing'
+          });
+          
+          // Check if branch data exists in storage but isn't being loaded
+          const branchConversations = parsed.conversations?.filter(([id, conv]) => conv.parentId || conv.displayNumber?.includes('.'));
+          console.log('Branch conversations in storage:', branchConversations?.length || 0);
+          
+        } catch (error) {
+          console.error('❌ localStorage data corrupted:', error);
+        }
+      }
+      
+      // Check GraphModel state before loading
+      console.log('Pre-load GraphModel state:', {
+        conversationsSize: graphModel.conversations?.size || 'undefined',
+        branchesSize: graphModel.branches?.size || 'undefined',
+        mainThreadLength: graphModel.mainThread?.length || 'undefined'
+      });
+      
+      // Use getAllConversationsWithBranches instead of getAllConversations for complete restoration
+      const loadedConversations = graphModel.getAllConversationsWithBranches();
+      console.log('Post-load conversations:', loadedConversations.length);
+      
+      // Check if branches are in the loaded conversations
+      const branchConversations = loadedConversations.filter(c => c.parentId || (c.displayNumber && c.displayNumber.toString().includes('.')));
+      console.log('Branch conversations in result:', branchConversations.length);
+      
       setConversations(loadedConversations);
       console.log('📊 Storage stats:', graphModel.getStorageStats());
+      
+      console.groupEnd();
       
       // Clean up any ghost branches on startup
       graphModel.cleanupEmptyThreads();
@@ -199,6 +275,54 @@ function App() {
   const updateActivity = useCallback(() => {
     setLastActivity(Date.now())
   }, [])
+
+  // Force complete restoration mechanism
+  const forceCompleteRestore = useCallback(() => {
+    console.log('🔄 Forcing complete state restoration...');
+    
+    // Force GraphModel to reload from storage
+    graphModel.loadFromStorage();
+    
+    // Force complete conversation refresh
+    const allConversations = graphModel.getAllConversationsWithBranches();
+    setConversations(allConversations);
+    
+    // Verify restoration
+    const stats = graphModel.getStorageStats();
+    console.log('📊 Post-restoration stats:', stats);
+    
+    // Clear restoration marker
+    localStorage.removeItem('dagger-needs-full-restore');
+    
+  }, [graphModel])
+
+  // Session timeout handler with state preservation
+  const handleSessionTimeout = useCallback(() => {
+    console.log('⏰ Session timeout detected, preserving state...');
+    
+    // Force save current state
+    graphModel.saveToStorage();
+    
+    // Mark that we need complete restoration on next login
+    localStorage.setItem('dagger-needs-full-restore', 'true');
+    
+    setSessionApiKey('');
+    setApiKeyConfigured(false);
+    
+  }, [graphModel])
+
+  // Session restore handler
+  const handleSessionRestore = useCallback(() => {
+    const needsRestore = localStorage.getItem('dagger-needs-full-restore');
+    
+    if (needsRestore) {
+      console.log('🔄 Session restore detected, forcing complete state restoration...');
+      setTimeout(() => {
+        forceCompleteRestore();
+      }, 100); // Small delay to ensure all initialization is complete
+    }
+    
+  }, [forceCompleteRestore])
 
   // BACKUP - Original problematic version
   /*
@@ -950,20 +1074,76 @@ function App() {
     });
   }, [])
 
-  // Handle merge nodes operation
-  const handleMergeNodes = useCallback((sourceConversationId, targetConversationId) => {
+  // Handle merge nodes operation with enhanced intelligence integration
+  const handleMergeNodes = useCallback((sourceConversationId, targetConversationId, mergeData = null) => {
+    console.group('🔗 === MERGE INTEGRATION ===');
+    
     try {
-      graphModel.mergeNodes(sourceConversationId, targetConversationId);
-      console.log(`✅ Merged node ${sourceConversationId} into ${targetConversationId}`);
+      console.log('📊 MERGE DATA RECEIVED:');
+      if (mergeData) {
+        console.log(`Summary length: ${mergeData.summary?.length || 0} characters`);
+        console.log(`Summary type: ${mergeData.summaryType || 'unknown'}`);
+        console.log(`Merge prompt: ${mergeData.mergePrompt || 'unknown'}`);
+        console.log('Summary content:');
+        console.log('='.repeat(30));
+        console.log(mergeData.summary || 'No summary provided');
+        console.log('='.repeat(30));
+      } else {
+        console.log('No merge data provided - performing simple merge');
+      }
+      
+      if (mergeData && mergeData.summary) {
+        console.log(`🔗 Enhanced merge with ${mergeData.mergePrompt} integration`);
+        
+        // Get the target conversation to determine the correct thread
+        const targetConv = graphModel.getConversation(targetConversationId);
+        const targetThreadId = targetConv?.threadId || 'main';
+        
+        console.log(`Creating integration node in thread: ${targetThreadId}`);
+        
+        // Create an auto-generated integration node in the target thread
+        const integrationNode = graphModel.addConversation(
+          `[Integrated insights from Branch ${graphModel.getConversation(sourceConversationId)?.displayNumber}]`,
+          mergeData.summary,
+          {
+            status: 'complete',
+            threadId: targetThreadId,
+            model: 'claude-sonnet-4-20250514',
+            isAutoGenerated: true,
+            mergeSource: sourceConversationId,
+            mergeTarget: targetConversationId,
+            mergePrompt: mergeData.mergePrompt,
+            usage: { input_tokens: 0, output_tokens: 0, total_tokens: 0 } // Placeholder
+          }
+        );
+        
+        console.log(`✅ Created integration node ${integrationNode.id} with display number ${integrationNode.displayNumber}`);
+        
+        // Now perform the branch closure (merge)
+        graphModel.mergeNodes(sourceConversationId, targetConversationId);
+        console.log(`✅ Closed branch ${sourceConversationId} via intelligent merge`);
+        
+      } else {
+        // Regular merge without intelligence
+        console.log('Performing standard merge without AI integration');
+        graphModel.mergeNodes(sourceConversationId, targetConversationId);
+        console.log(`✅ Merged node ${sourceConversationId} into ${targetConversationId}`);
+      }
+      
+      console.log('✅ GRAPH MODEL MERGE COMPLETED');
       
       // Update UI to reflect merge
       setConversations(graphModel.getAllConversationsWithBranches());
       
+      console.log('✅ UI UPDATED');
+      console.groupEnd();
+      
     } catch (error) {
-      console.error('❌ Merge failed:', error.message);
+      console.error('❌ MERGE INTEGRATION FAILED:', error);
+      console.groupEnd();
       alert(`Merge failed: ${error.message}`);
     }
-  }, [])
+  }, [graphModel])
   
   // Personality selection helper functions
   const getUniversalInjector = () => {
@@ -1074,6 +1254,9 @@ This personality framework helps you understand my thinking patterns and communi
       // Set session API key on ClaudeAPI instance
       ClaudeAPI.setSessionApiKey(sessionApiKey);
       
+      // Check if we need to restore state after session timeout
+      handleSessionRestore();
+      
       // Only auto-initialize if we have no conversations yet (Node 0 state)
       const loadedConversations = graphModel.getAllConversations();
       if (loadedConversations.length === 0) {
@@ -1085,7 +1268,7 @@ This personality framework helps you understand my thinking patterns and communi
         }, 100);
       }
     }
-  }, [apiKeyConfigured, sessionApiKey, handlePersonalitySelect]);
+  }, [apiKeyConfigured, sessionApiKey, handlePersonalitySelect, handleSessionRestore]);
   
   const handleRetryConnection = useCallback(() => {
     ConfigService.clearCache();
@@ -1230,9 +1413,7 @@ This personality framework helps you understand my thinking patterns and communi
               🔑 API Key: {apiKeyConfigured ? '✅ Session Active' : '❌ Missing'}
             </span>
             {sessionApiKey && (
-              <span className="session-indicator">
-                🕒 Session expires in {Math.ceil((30 * 60 * 1000 - (Date.now() - lastActivity)) / 60000)} min
-              </span>
+              <SessionTimer lastActivity={lastActivity} />
             )}
           </div>
         </div>
@@ -1561,6 +1742,7 @@ This personality framework helps you understand my thinking patterns and communi
               theme="dark"
               onViewChange={handleViewChange}
               currentView={currentView}
+              promptsModel={promptsModel}
             />
         )}
 

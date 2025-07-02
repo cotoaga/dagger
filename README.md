@@ -1,10 +1,11 @@
-# 🗡️ DAGGER v0.4.0
+# 🗡️ DAGGER v0.4.1
 **Advanced Knowledge Cartography Platform with Nuclear Transparency**
 
 [![Production Ready](https://img.shields.io/badge/Status-Production%20Ready-green)](https://github.com/your-repo/dagger)
-[![Version](https://img.shields.io/badge/Version-0.4.0-blue)](https://github.com/your-repo/dagger/releases)
-[![Test Coverage](https://img.shields.io/badge/Tests-25%2F25%20Passing-brightgreen)](https://github.com/your-repo/dagger)
+[![Version](https://img.shields.io/badge/Version-0.4.1-blue)](https://github.com/your-repo/dagger/releases)
+[![Test Coverage](https://img.shields.io/badge/Tests-25%2B%20Passing-brightgreen)](https://github.com/your-repo/dagger)
 [![Nuclear Proxy](https://img.shields.io/badge/Nuclear%20Proxy-v2.0-orange)](https://github.com/your-repo/dagger)
+[![Console Clean](https://img.shields.io/badge/Console-Production%20Clean-success)](https://github.com/your-repo/dagger)
 
 > **Distributed cognition architecture that transforms linear chat into navigable knowledge topology**
 
@@ -30,7 +31,7 @@ cp .env.example .env
 # Add your Claude API key to .env: CLAUDE_API_KEY=sk-ant-...
 ```
 
-### Launch DAGGER v0.4.0 (BOTH SERVERS REQUIRED)
+### Launch DAGGER v0.4.1 (BOTH SERVERS REQUIRED)
 ```bash
 # Terminal 1: Start Nuclear Proxy v2.0 server (MUST RUN FIRST)
 npm run dev:proxy
@@ -66,11 +67,12 @@ npm run preview   # Local production testing
 
 **Remember: DAGGER is distributed cognition architecture, not a simple webpage.** 🗡️
 
-## ✨ v0.4.0 Key Features
+## ✨ v0.4.1 Key Features
 
 ### 🚀 Nuclear Transparency Architecture
 - **Nuclear Proxy v2.0**: Zero-validation complete transparency (~50 lines total)
 - **TDD Validated**: 18+ comprehensive tests, all passing
+- **Production Console Clean**: Environment-aware logging with zero debug spam
 - **Zero Infrastructure Friction**: Claude API is the validation authority
 - **Legacy Compatibility**: Full `/api/chat` endpoint support
 
@@ -91,6 +93,7 @@ npm run preview   # Local production testing
 - **Hierarchical Merging**: Drag conversation endpoints to merge intelligently
 - **Conflict Prevention**: Automatic validation prevents graph corruption
 - **Real-time Feedback**: Visual indicators during drag operations
+- **Bug-Free Workflow**: Fixed forEach parameter type errors for reliable merging
 
 ### 🗺️ Interactive Knowledge Maps
 - **Cytoscape.js Visualization**: Professional DAG rendering with smooth interactions
@@ -104,6 +107,7 @@ npm run preview   # Local production testing
 - **Smart Content Management**: Auto-collapse for conversation overview
 - **Real-time Analytics**: Token counting, processing metrics, complexity tracking
 - **Session Management**: Volatile API key support with secure handling
+- **Clean Console Output**: Production-ready logging with development-only debug mode
 
 ## 🏗️ Architecture
 
@@ -131,8 +135,11 @@ src/
 ├── models/GraphModel.js          # Conversation graph with merge management
 ├── services/
 │   ├── ClaudeAPI.js             # Nuclear Proxy API integration
+│   ├── MessageFormatter.js      # Robust message formatting with defensive programming
 │   ├── TokenCostService.js      # Token economics and cost tracking
 │   └── TokenizerService.js      # Content analysis and tokenization
+├── utils/
+│   └── logger.js                # Environment-aware logging utility
 ├── components/
 │   ├── DaggerInput.jsx          # Temperature control + auto-resize input
 │   ├── DaggerOutput.jsx         # Merge status + markdown rendering
@@ -172,9 +179,10 @@ npm run build
 ### Development Quality
 - ✅ **Test-Driven Development**: 25+ comprehensive tests
 - ✅ **Clean Architecture**: MVC with conversation-aware mental models
+- ✅ **Bug-Free Merge Workflow**: Fixed parameter type errors and defensive programming
 - ✅ **Performance Optimized**: Sub-2s response times
 - ✅ **Cross-Platform**: Modern browser compatibility
-- ✅ **Production Ready**: Zero-warning builds
+- ✅ **Production Ready**: Zero-warning builds with clean console output
 
 ## 🤝 Contributing
 
@@ -239,6 +247,6 @@ Built with distributed cognition principles, inspired by:
 
 ---
 
-**DAGGER v0.4.0 - Nuclear transparency meets knowledge cartography** 🗡️
+**DAGGER v0.4.1 - Bug-free nuclear transparency meets knowledge cartography** 🗡️
 
 *Built by distributed cognition, with nuclear transparency, for cognitive amplification at scale*
