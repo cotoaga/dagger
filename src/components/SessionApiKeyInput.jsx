@@ -43,7 +43,7 @@ const SessionApiKeyInput = ({ onApiKeySubmit, onTimeout }) => {
 
     try {
       // Test the API key with a minimal request
-      const testResponse = await fetch('http://localhost:3001/api/claude', {
+      const testResponse = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

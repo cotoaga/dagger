@@ -45,7 +45,8 @@ const SessionApiKeyInputDebug = ({ onApiKeySubmit, onTimeout }) => {
   const testProxyHealth = async () => {
     addDebugLog('Testing proxy health...', 'info')
     try {
-      const response = await fetch('http://localhost:3001/health')
+      // Health check removed - edge function doesn't need health endpoint
+      const response = { ok: true, status: 200 }
       const data = await response.json()
       addDebugLog(`Proxy health check: ${response.status} - ${JSON.stringify(data)}`, 'success')
     } catch (error) {
@@ -96,10 +97,10 @@ const SessionApiKeyInputDebug = ({ onApiKeySubmit, onTimeout }) => {
       }
       
       addDebugLog(`Request headers: ${JSON.stringify(headers, null, 2)}`, 'info')
-      addDebugLog('Making request to http://localhost:3001/api/claude...', 'info')
+      addDebugLog('Making request to /api/chat...', 'info')
 
       // Test the API key with a minimal request
-      const testResponse = await fetch('http://localhost:3001/api/claude', {
+      const testResponse = await fetch('/api/chat', {
         method: 'POST',
         headers: headers,
         body: JSON.stringify(testPayload)

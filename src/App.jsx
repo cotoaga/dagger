@@ -1277,35 +1277,53 @@ This personality framework helps you understand my thinking patterns and communi
   
   const availablePersonalities = [
     {
-      id: 'khaos-explorer',
-      name: 'KHAOS EXPLORER V4.0',
-      type: 'khaos',
-      chars: promptsModel.getPrompt('khaos-explorer')?.content.length || 340,
-      lines: promptsModel.getPrompt('khaos-explorer')?.content.split('\n').length || 12,
+      id: 'khaos-navigator-6',
+      name: 'KHAOS NAVIGATOR V6.0',
+      description: 'Cognitive Navigation Guide - 60% Technical Precision, 25% Existential Depth, 15% Unexpected Connections',
+      emoji: '🧭🎭',
+      category: 'personality',
+      chars: promptsModel.getPrompt('khaos-navigator-6')?.content.length || 2847,
+      lines: promptsModel.getPrompt('khaos-navigator-6')?.content.split('\n').length || 89,
       starred: true
     },
     {
-      id: 'virgin-claude', 
+      id: 'virgin-claude-1', 
       name: 'VIRGIN CLAUDE',
-      type: 'virgin',
-      chars: 79,
-      lines: 1,
+      description: 'Pure Claude - Helpful, harmless, honest baseline',
+      emoji: '🌱',
+      category: 'system',
+      chars: promptsModel.getPrompt('virgin-claude-1')?.content.length || 79,
+      lines: promptsModel.getPrompt('virgin-claude-1')?.content.split('\n').length || 1,
       starred: true
     },
     {
-      id: 'khaos-squeezer',
-      name: 'KHAOS SQUEEZER',
-      type: 'utility', 
-      chars: promptsModel.getPrompt('khaos-squeezer')?.content.length || 310,
-      lines: promptsModel.getPrompt('khaos-squeezer')?.content.split('\n').length || 11,
+      id: 'khaos-synthesizer-6',
+      name: 'KHAOS SYNTHESIZER V6.0',
+      description: 'Branch Merge Specialist - Cognitive compression without loss',
+      emoji: '🔮🤖',
+      category: 'merge',
+      chars: promptsModel.getPrompt('khaos-synthesizer-6')?.content.length || 1456,
+      lines: promptsModel.getPrompt('khaos-synthesizer-6')?.content.split('\n').length || 52,
       starred: false
     },
     {
-      id: 'khaos-diver',
-      name: 'KHAOS DIVER',
-      type: 'utility',
-      chars: promptsModel.getPrompt('khaos-diver')?.content.length || 280,
-      lines: promptsModel.getPrompt('khaos-diver')?.content.split('\n').length || 10,
+      id: 'khaos-analyst-6',
+      name: 'KHAOS ANALYST V6.0',
+      description: 'Deep Domain Explorer - Laser-focused analysis',
+      emoji: '🔍🤖',
+      category: 'analysis',
+      chars: promptsModel.getPrompt('khaos-analyst-6')?.content.length || 1687,
+      lines: promptsModel.getPrompt('khaos-analyst-6')?.content.split('\n').length || 61,
+      starred: false
+    },
+    {
+      id: 'khaos-director-6',
+      name: 'KHAOS DIRECTOR V6.0',
+      description: 'Strategic Orchestrator - High-level conversation architecture',
+      emoji: '🚀🎯',
+      category: 'strategy',
+      chars: promptsModel.getPrompt('khaos-director-6')?.content.length || 1923,
+      lines: promptsModel.getPrompt('khaos-director-6')?.content.split('\n').length || 71,
       starred: false
     }
   ];
@@ -1519,9 +1537,10 @@ This personality framework helps you understand my thinking patterns and communi
               setApiKey('')
               setApiTestStatus('')
             }}
-            className="disconnect-button"
+            className="api-switch-button"
+            title="Use a different Claude API key"
           >
-            Disconnect API
+            🔑 Switch API Key
           </button>
         </div>
       </header>

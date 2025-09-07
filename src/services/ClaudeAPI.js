@@ -6,9 +6,7 @@ class ClaudeAPIClass {
   constructor() {
     this.apiKey = localStorage.getItem('claude-api-key');
     this.sessionApiKey = null;  // Will be set when session key is provided
-    this.baseURL = import.meta.env.DEV 
-      ? 'http://localhost:3001/api/claude'
-      : 'https://api.anthropic.com/v1/messages';
+    this.baseURL = '/api/chat';
     this.conversationThreads = new Map(); // Thread ID -> message history
     this.model = 'claude-sonnet-4-20250514';
     this.extendedThinking = false;
@@ -92,7 +90,7 @@ class ClaudeAPIClass {
   // Check proxy server health
   async checkProxyHealth() {
     try {
-      const response = await fetch('http://localhost:3001/health');
+      // Health check removed - edge function doesn't need health endpoint
       return response.ok;
     } catch (error) {
       return false;
@@ -196,7 +194,7 @@ class ClaudeAPIClass {
       
       // Determine endpoint based on key type
       const endpoint = apiKey === 'BACKEND_CONFIGURED' 
-        ? 'http://localhost:3001/api/chat'  // Use proxy for backend keys
+        ? '/api/chat'  // Use Vercel edge function
         : this.baseURL;  // Use default endpoint for manual keys
         
       console.log('📡 Making request to:', endpoint);

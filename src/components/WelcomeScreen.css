@@ -348,3 +348,134 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ======================================
+   DRAMATIC CIRCLE ANIMATION RESTORATION
+   ====================================== */
+
+/* Dramatic circle ripple effect */
+@keyframes ripple-out {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(2);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+.personality-card {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.personality-card::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100px;
+  height: 100px;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.6), transparent);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0;
+}
+
+.personality-card.activating::before {
+  animation: ripple-out 0.8s ease-out;
+}
+
+/* Extra dramatic portal effect */
+.personality-card.activating {
+  animation: portal-open 0.6s ease-out;
+}
+
+@keyframes portal-open {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(0.95) rotate(2deg);
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.8);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    box-shadow: 0 0 50px rgba(16, 185, 129, 0);
+  }
+}
+
+/* Matrix rain interaction */
+.personality-card:hover ~ .matrix-rain {
+  animation: matrix-pulse 2s infinite;
+}
+
+@keyframes matrix-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.8; }
+}
+
+/* ======================================
+   DOCUMENTATION LINK STYLING
+   ====================================== */
+
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.title-text {
+  color: #00ff41;
+  font-size: 2em;
+  font-weight: bold;
+  text-shadow: 0 0 10px #00ff41;
+}
+
+.help-link {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 20px;
+  padding: 6px 12px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 20px;
+  color: #10b981;
+  text-decoration: none;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.help-link:hover {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: #10b981;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.help-icon {
+  margin-right: 6px;
+  font-size: 16px;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .help-link {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+  }
+  
+  .help-text {
+    display: none; /* Show only icon on mobile */
+  }
+}

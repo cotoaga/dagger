@@ -15,6 +15,15 @@ export function MergePromptSelector({
     if (isVisible && promptsModel) {
       const prompts = promptsModel.getPromptsByCategory('merge')
       setMergePrompts(prompts)
+      
+      // Auto-select KHAOS Synthesizer 6.0 as default
+      const khaosSynthesizer = prompts.find(p => p.id === 'khaos-synthesizer-6')
+      if (khaosSynthesizer) {
+        setSelectedPrompt(khaosSynthesizer)
+      } else if (prompts.length > 0) {
+        // Fallback to first available merge prompt
+        setSelectedPrompt(prompts[0])
+      }
     }
   }, [isVisible, promptsModel])
 

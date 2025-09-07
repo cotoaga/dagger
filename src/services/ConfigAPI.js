@@ -1,6 +1,6 @@
 class ConfigAPI {
   constructor() {
-    this.baseURL = 'http://localhost:3001';
+    this.baseURL = '';  // Relative URLs for Vercel deployment
     this.configCache = null;
     this.cacheExpiry = null;
     this.CACHE_DURATION = 5 * 60 * 1000; // 5 minutes

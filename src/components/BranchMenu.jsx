@@ -14,8 +14,15 @@ export function BranchMenu({ sourceConversationId, onCreateBranch, onClose, conv
 
   useEffect(() => {
     // Load available prompts
-    setPrompts(promptsModel.getAllPrompts());
-  }, []);
+    const allPrompts = promptsModel.getAllPrompts();
+    setPrompts(allPrompts);
+    
+    // Auto-select KHAOS Navigator 6.0 as default personality
+    const khaosNavigator = allPrompts.find(p => p.id === 'khaos-navigator-6');
+    if (khaosNavigator && selectedType === 'personality') {
+      setSelectedPrompt(khaosNavigator.id);
+    }
+  }, [selectedType]);
 
   const branchTypes = [
     {

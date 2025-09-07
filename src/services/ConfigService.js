@@ -1,6 +1,6 @@
 class ConfigService {
   constructor() {
-    this.baseURL = 'http://localhost:3001';
+    this.baseURL = '';  // Relative URLs for Vercel deployment
     this.cache = null;
     this.cacheTime = null;
     this.CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
@@ -113,7 +113,7 @@ class ConfigService {
         throw new Error(validation.error);
       }
 
-      const testResponse = await fetch('http://localhost:3001/api/claude', {
+      const testResponse = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

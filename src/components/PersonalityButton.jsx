@@ -3,28 +3,37 @@ import React, { useState } from 'react';
 const PersonalityButton = ({ personality, isSelected, onSelect }) => {
   const [isHovered, setIsHovered] = useState(false);
 
-  const getPersonalityIcon = (type) => {
+  const getPersonalityIcon = (category) => {
     const icons = {
-      'khaos': '🎭',
-      'coder': '💻',
-      'analyst': '📊',
-      'virgin': '🌱',
-      'custom': '🔬',
-      'load': '📚'
+      'personality': '🎭',
+      'system': '🌱',
+      'merge': '🔗',
+      'analysis': '🔬',
+      'strategy': '🚀',
+      'legacy': '📚',
+      'custom': '🛠️'
     };
-    return icons[type] || '🤖';
+    return icons[category] || '🤖';
   };
 
-  const getPersonalityDescription = (type) => {
+  const getPersonalityDescription = (category, name) => {
     const descriptions = {
-      'khaos': 'Dimensional Navigator - 60% TARS Sarcasm, 25% Marvin Philosophy',
-      'coder': 'Expert Software Engineer - Clean, efficient, maintainable code',
-      'analyst': 'Strategic Business Mind - Market analysis & organizational planning',
-      'virgin': 'Pure Claude - Helpful, harmless, honest baseline',
-      'custom': 'Build Your Own - Create custom cognitive personality',
-      'load': 'Import Template - Load saved personality configurations'
+      'personality': 'Core conversational AI with DAGGER topology awareness',
+      'system': 'Pure Claude - Helpful, harmless, honest baseline',
+      'merge': 'Specialized in synthesizing branch conversations intelligently',
+      'analysis': 'Domain deep-dive specialist for focused explorations',
+      'strategy': 'High-level conversation architect for maximum cognitive ROI',
+      'legacy': 'Previous generation prompts for compatibility',
+      'custom': 'User-created custom personality configurations'
     };
-    return descriptions[type] || 'Unknown personality type';
+    
+    // Override with specific descriptions for known prompts
+    if (name?.includes('Navigator 6.0')) return 'XML-structured DAGGER guide with tactical precision';
+    if (name?.includes('Synthesizer 6.0')) return 'Branch merge specialist with 10:1 compression protocol';
+    if (name?.includes('Analyst 6.0')) return '4-layer analysis framework for deep domain exploration';
+    if (name?.includes('Director 6.0')) return 'Strategic conversation orchestrator with scout/build/pivot modes';
+    
+    return descriptions[category] || 'Advanced AI personality configuration';
   };
 
   return (
@@ -32,7 +41,7 @@ const PersonalityButton = ({ personality, isSelected, onSelect }) => {
       className={`personality-button ${isSelected ? 'selected' : ''} ${isHovered ? 'hovered' : ''}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onClick={onSelect}
+      onClick={(event) => onSelect(event)}
     >
       {/* Selection Glow Effect */}
       {isSelected && <div className="selection-glow"></div>}
@@ -40,13 +49,13 @@ const PersonalityButton = ({ personality, isSelected, onSelect }) => {
       {/* Main Button Content */}
       <div className="button-content">
         <div className="personality-icon">
-          {getPersonalityIcon(personality.type)}
+          {personality.emoji || getPersonalityIcon(personality.category)}
         </div>
         
         <div className="personality-info">
           <h3 className="personality-name">{personality.name}</h3>
           <p className="personality-description">
-            {getPersonalityDescription(personality.type)}
+            {personality.description || getPersonalityDescription(personality.category, personality.name)}
           </p>
           
           <div className="personality-stats">

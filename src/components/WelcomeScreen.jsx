@@ -12,21 +12,39 @@ const WelcomeScreen = ({ onPersonalitySelect, availablePersonalities }) => {
     setTimeout(() => setIsVisible(true), 100);
   }, []);
 
-  const handlePersonalitySelect = (personalityId) => {
+  const handlePersonalitySelect = async (personalityId, event) => {
     setSelectedPersonality(personalityId);
     
-    // Epic selection animation
+    // Add dramatic effect
+    const card = event.currentTarget;
+    card.classList.add('activating');
+    
+    // Sound effect (optional)
+    // playSound('portal-open.mp3');
+    
+    // Wait for animation to peak
     setTimeout(() => {
       onPersonalitySelect(personalityId);
-    }, 1000);
+    }, 400);
+    
+    // Remove animation class after completion
+    setTimeout(() => {
+      card.classList.remove('activating');
+    }, 800);
   };
 
-  const handleNavigateToPromptEditor = () => {
-    // Navigate to prompt editor/creation interface
-    console.log('🍹 Navigating to Pan-Galactic-Gargle-Blaster creator');
+  const openPromptMixer = () => {
+    // Open the prompt editor in "create new" mode
+    console.log('🍹 Opening Pan-Galactic-Gargle-Blaster prompt mixer');
     
     // For now, we'll use hash navigation - this can be enhanced based on routing setup
     window.location.hash = '#prompts/editor';
+    
+    // Optional: Add mixing animation
+    document.body.classList.add('mixing-cocktail');
+    setTimeout(() => {
+      document.body.classList.remove('mixing-cocktail');
+    }, 1000);
     
     // Alternative: If the parent component has a way to switch views, call it
     // if (onNavigateToEditor) onNavigateToEditor();
@@ -52,13 +70,25 @@ const WelcomeScreen = ({ onPersonalitySelect, availablePersonalities }) => {
           </div>
           
           <div className="mentat-section">
-            <h2 className="mentat-title">
-              Sapho's Juice for the Smart Mentat
-            </h2>
+            <div className="header-section">
+              <h1 className="title-row">
+                <span className="title-text">Sapho's Juice for the Smart Mentat</span>
+                <a 
+                  href="https://cotoaga.ai/dagger" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="help-link"
+                  title="Learn how to shoot yourself in the foot elegantly"
+                >
+                  <span className="help-icon">📖</span>
+                  <span className="help-text">How to DAGGER</span>
+                </a>
+              </h1>
+            </div>
             <div className="prompt-selection-header">
               {/* Main selection header */}
               <h2 className="selection-title">
-                Choose your Poison 🧪
+                Choose your Poison 🗡️
               </h2>
               <p className="selection-subtitle">
                 Select a pre-configured AI personality
@@ -74,19 +104,20 @@ const WelcomeScreen = ({ onPersonalitySelect, availablePersonalities }) => {
               key={personality.id}
               personality={personality}
               isSelected={selectedPersonality === personality.id}
-              onSelect={() => handlePersonalitySelect(personality.id)}
+              onSelect={(event) => handlePersonalitySelect(personality.id, event)}
             />
           ))}
         </div>
 
         {/* Fifth area - Prompt Library Access */}
         <div className="prompt-library-section">
-          <div className="personality-button prompt-library-button" onClick={handleNavigateToPromptEditor}>
+          <div className="personality-button prompt-library-button gargle-blaster-button" onClick={openPromptMixer}>
             <div className="button-content">
               <div className="personality-icon">🍹</div>
               <div className="personality-info">
                 <div className="personality-name">Pan-Galactic-Gargle-Blaster</div>
-                <div className="personality-description">Access Prompt Library</div>
+                <div className="personality-description">Mix Your Own Prompt Cocktail</div>
+                <div className="subtitle">Access Prompt Library & Create Custom AI Personalities</div>
               </div>
             </div>
           </div>
