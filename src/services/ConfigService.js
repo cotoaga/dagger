@@ -20,6 +20,20 @@ class ConfigService {
         };
       }
 
+      // Check if we're in development mode (localhost)
+      const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      
+      if (isDevelopment) {
+        console.log('ℹ️ Development mode detected - skipping backend config check');
+        return {
+          apiKeyConfigured: false,
+          backendAvailable: true,
+          configSource: 'none',
+          hasApiKey: false,
+          success: false
+        };
+      }
+
       // Use cache if fresh
       if (this.cache && this.cacheTime && (Date.now() - this.cacheTime) < this.CACHE_DURATION) {
         console.log('📋 Using cached config');

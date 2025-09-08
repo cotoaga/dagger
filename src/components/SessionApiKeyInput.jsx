@@ -102,6 +102,7 @@ const SessionApiKeyInput = ({ onApiKeySubmit, onTimeout }) => {
               className={`api-key-input ${error ? 'error' : ''}`}
               disabled={isValidating}
               autoFocus
+              autoComplete="new-password"
             />
           </div>
 

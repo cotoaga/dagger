@@ -59,6 +59,7 @@ const APIKeyInput = ({ onApiKeySubmit, backendConfig }) => {
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="sk-ant-..."
+              autoComplete="new-password"
               required
               disabled={isSubmitting}
             />
