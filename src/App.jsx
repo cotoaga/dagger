@@ -234,7 +234,7 @@ function App() {
           });
           
           // Check if branch data exists in storage but isn't being loaded
-          const branchConversations = parsed.conversations?.filter(([id, conv]) => conv.parentId || conv.displayNumber?.includes('.'));
+          const branchConversations = parsed.conversations?.filter(([id, conv]) => conv.parentId || (conv.displayNumber && conv.displayNumber.toString().includes('.')));
           console.log('Branch conversations in storage:', branchConversations?.length || 0);
           
         } catch (error) {
