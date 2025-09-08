@@ -12,6 +12,7 @@ import SessionApiKeyInput from './components/SessionApiKeyInput.jsx'
 import { graphModel } from './models/GraphModel.js'
 import { claudeAPI as ClaudeAPI } from './services/ClaudeAPI.js'
 import PromptsModel from './models/PromptsModel.js'
+import promptRegistry from './prompts/index.ts'
 import ConfigService, { ConfigService as ConfigServiceClass } from './services/ConfigService.js'
 import { BranchContextManager } from './services/BranchContextManager.js'
 import { ConversationChainBuilder } from './services/ConversationChainBuilder.js'
@@ -1154,12 +1155,23 @@ This personality framework helps you understand my thinking patterns and communi
   };
   
   const getPersonalityTemplate = (personalityId) => {
+    // First try the new XML-based prompt registry
+    const newPrompt = promptRegistry.getPrompt(personalityId);
+    if (newPrompt) {
+      return newPrompt.systemPrompt;
+    }
+
+    // Fallback to legacy templates for backwards compatibility
     const templates = {
       'khaos-explorer': promptsModel.getPrompt('khaos-explorer')?.content || '',
       'khaos': promptsModel.getPrompt('khaos-explorer')?.content || '', // Legacy compatibility
       'virgin': promptsModel.getPrompt('virgin-claude')?.content || 'You are Claude, created by Anthropic. You are helpful, harmless, and honest.',
       'squeezer': promptsModel.getPrompt('khaos-squeezer')?.content || '',
-      'diver': promptsModel.getPrompt('khaos-diver')?.content || ''
+      'diver': promptsModel.getPrompt('khaos-diver')?.content || '',
+      // Map new IDs to legacy fallbacks if needed
+      'khaos_navigator_v7': promptsModel.getPrompt('khaos-navigator-6')?.content || '',
+      'khaos_specialist_v7': promptsModel.getPrompt('khaos-analyst-6')?.content || '',
+      'vanilla_claude': 'You are Claude, created by Anthropic. You are helpful, harmless, and honest.'
     };
     return templates[personalityId] || templates['virgin'];
   };
@@ -1274,48 +1286,8 @@ This personality framework helps you understand my thinking patterns and communi
     checkApiKeyConfiguration();
   }, [checkApiKeyConfiguration]);
   
-  const availablePersonalities = [
-    {
-      id: 'khaos-navigator-6',
-      name: 'KHAOS NAVIGATOR V6.0',
-      description: 'Cognitive Navigation Guide - 60% Technical Precision, 25% Existential Depth, 15% Unexpected Connections',
-      emoji: '🧭🎭',
-      category: 'personality',
-      chars: promptsModel.getPrompt('khaos-navigator-6')?.content.length || 2847,
-      lines: promptsModel.getPrompt('khaos-navigator-6')?.content.split('\n').length || 89,
-      starred: true
-    },
-    {
-      id: 'virgin-claude-1', 
-      name: 'VIRGIN CLAUDE',
-      description: 'Pure Claude - Helpful, harmless, honest baseline',
-      emoji: '🌱',
-      category: 'system',
-      chars: promptsModel.getPrompt('virgin-claude-1')?.content.length || 79,
-      lines: promptsModel.getPrompt('virgin-claude-1')?.content.split('\n').length || 1,
-      starred: true
-    },
-    {
-      id: 'khaos-analyst-6',
-      name: 'KHAOS ANALYST V6.0',
-      description: 'Deep Domain Explorer - Laser-focused analysis',
-      emoji: '🔍🤖',
-      category: 'analysis',
-      chars: promptsModel.getPrompt('khaos-analyst-6')?.content.length || 1687,
-      lines: promptsModel.getPrompt('khaos-analyst-6')?.content.split('\n').length || 61,
-      starred: false
-    },
-    {
-      id: 'khaos-director-6',
-      name: 'KHAOS DIRECTOR V6.0',
-      description: 'Strategic Orchestrator - High-level conversation architecture',
-      emoji: '🚀🎯',
-      category: 'strategy',
-      chars: promptsModel.getPrompt('khaos-director-6')?.content.length || 1923,
-      lines: promptsModel.getPrompt('khaos-director-6')?.content.split('\n').length || 71,
-      starred: false
-    }
-  ];
+  // Load personalities from the new XML-based prompt registry
+  const availablePersonalities = promptRegistry.toLegacyFormat();
   
   // Check if this is Node 0 (empty conversation state)
   const isNodeZero = conversations.length === 0;

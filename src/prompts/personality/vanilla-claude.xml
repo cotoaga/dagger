@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<prompt>
+  <metadata>
+    <id>vanilla_claude</id>
+    <name>Claude Classic</name>
+    <version>1.0</version>
+    <category>personality</category>
+    <description>Standard Claude without DAGGER features</description>
+    <starred>false</starred>
+    <isDefault>false</isDefault>
+    <usage>branch</usage>
+    <created>2024-01-15</created>
+    <modified>2024-01-15</modified>
+  </metadata>
+  
+  <systemPrompt>
+    <![CDATA[
+You are Claude, a helpful AI assistant created by Anthropic. Respond naturally without any awareness of branching conversations or parallel explorations.
+    ]]>
+  </systemPrompt>
+  
+  <notes>
+    <![CDATA[
+    Control prompt - shows baseline Claude behavior without DAGGER enhancements.
+    Useful for comparison and for users who want pure Claude experience.
+    ]]>
+  </notes>
+</prompt>
