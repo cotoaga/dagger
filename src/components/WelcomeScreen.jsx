@@ -15,32 +15,32 @@ const WelcomeScreen = ({ onPersonalitySelect, availablePersonalities, onNavigate
   const handlePersonalitySelect = async (personalityId, event) => {
     setSelectedPersonality(personalityId);
     
-    // Add dramatic ripple effect
+    // Add fancy circling progress bar → flash → activation sequence
     const card = event.currentTarget;
-    card.classList.add('activating', 'ripple-effect');
+    card.classList.add('activating');
     
     // Sound effect (optional)
-    // playSound('portal-open.mp3');
+    // playSound('portal-charging.mp3');
     
-    // Wait for animation to peak
+    // Wait for circling progress + flash to complete before activation
     setTimeout(() => {
       onPersonalitySelect(personalityId);
-    }, 400);
+    }, 1500); // 1.2s progress + 0.3s flash
     
-    // Remove animation classes after completion
+    // Remove animation class after full sequence
     setTimeout(() => {
-      card.classList.remove('activating', 'ripple-effect');
-    }, 800);
+      card.classList.remove('activating');
+    }, 2000);
   };
 
   const openPromptLibrary = (event) => {
     console.log('🍹 Opening The Bar - Prompt Library');
     
-    // Add dramatic golden ripple effect
+    // Add fancy golden circling progress bar → flash → activation sequence
     const card = event.currentTarget;
-    card.classList.add('activating', 'ripple-effect');
+    card.classList.add('activating');
     
-    // Wait for animation to peak
+    // Wait for golden circling progress + flash to complete
     setTimeout(() => {
       // Hide welcome screen first
       if (onHideWelcomeScreen) {
@@ -54,12 +54,12 @@ const WelcomeScreen = ({ onPersonalitySelect, availablePersonalities, onNavigate
         // Fallback to hash navigation
         window.location.hash = '#prompts';
       }
-    }, 400);
+    }, 1900); // 1.5s golden progress + 0.4s golden flash
     
-    // Remove animation classes after completion
+    // Remove animation class after full sequence
     setTimeout(() => {
-      card.classList.remove('activating', 'ripple-effect');
-    }, 800);
+      card.classList.remove('activating');
+    }, 2400);
   };
 
   return (

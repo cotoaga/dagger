@@ -150,42 +150,82 @@
   box-shadow: inset 0 6px 12px rgba(0, 0, 0, 0.4);
 }
 
-/* Ripple Effect on Click */
+/* Fancy Click Animation: Circling Progress Bar → Flash → Activation */
 .personality-button {
   position: relative;
   overflow: hidden;
 }
 
+/* Circling Progress Bar */
+.personality-button::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 15px;
+  padding: 2px;
+  background: conic-gradient(from 0deg, transparent, #00ff41, transparent);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: xor;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Flash Effect */
 .personality-button::after {
   content: '';
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  background: rgba(0, 255, 65, 0.3);
-  transform: translate(-50%, -50%);
-  transition: width 0.6s ease-out, height 0.6s ease-out;
-  pointer-events: none;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle, rgba(0, 255, 65, 0.8) 0%, rgba(0, 255, 65, 0.2) 50%, transparent 100%);
+  border-radius: 15px;
   opacity: 0;
+  pointer-events: none;
+  z-index: 2;
 }
 
-.personality-button.ripple-effect::after {
-  width: 400px;
-  height: 400px;
+/* Activation Animation Sequence */
+.personality-button.activating::before {
   opacity: 1;
-  animation: ripple-fade 0.6s ease-out;
+  animation: circling-progress 1.2s ease-in-out;
 }
 
-@keyframes ripple-fade {
+.personality-button.activating::after {
+  animation: flash-effect 0.3s ease-out 1.2s;
+}
+
+@keyframes circling-progress {
   0% {
-    opacity: 0.8;
-    transform: translate(-50%, -50%) scale(0);
+    transform: rotate(0deg);
+    opacity: 1;
+  }
+  90% {
+    transform: rotate(360deg);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(360deg);
+    opacity: 0;
+  }
+}
+
+@keyframes flash-effect {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
   }
   100% {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(1);
+    transform: scale(1.1);
   }
 }
 
@@ -368,30 +408,70 @@
   box-shadow: inset 0 6px 12px rgba(139, 69, 19, 0.5);
 }
 
-/* Special golden ripple for The Bar */
+/* Special Golden Effects for The Bar */
+.the-bar-button::before {
+  background: conic-gradient(from 0deg, transparent, #ffd700, #ff8c00, #ffd700, transparent) !important;
+}
+
 .the-bar-button::after {
-  background: rgba(255, 215, 0, 0.4) !important;
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.9) 0%, rgba(255, 140, 0, 0.4) 50%, transparent 100%) !important;
 }
 
-.the-bar-button.ripple-effect::after {
-  animation: golden-ripple-fade 0.8s ease-out;
+/* Enhanced Golden Activation for The Bar */
+.the-bar-button.activating::before {
+  animation: golden-circling-progress 1.5s ease-in-out;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
 }
 
-@keyframes golden-ripple-fade {
+.the-bar-button.activating::after {
+  animation: golden-flash-effect 0.4s ease-out 1.5s;
+}
+
+@keyframes golden-circling-progress {
   0% {
+    transform: rotate(0deg);
     opacity: 1;
-    transform: translate(-50%, -50%) scale(0);
-    box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7);
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+  }
+  25% {
+    transform: rotate(90deg);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
   }
   50% {
-    opacity: 0.6;
-    transform: translate(-50%, -50%) scale(0.5);
-    box-shadow: 0 0 20px 10px rgba(255, 215, 0, 0.3);
+    transform: rotate(180deg);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+  }
+  75% {
+    transform: rotate(270deg);
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.8);
+  }
+  90% {
+    transform: rotate(360deg);
+    opacity: 1;
+    box-shadow: 0 0 30px rgba(255, 215, 0, 1);
+  }
+  100% {
+    transform: rotate(360deg);
+    opacity: 0;
+    box-shadow: 0 0 40px rgba(255, 215, 0, 0);
+  }
+}
+
+@keyframes golden-flash-effect {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+    box-shadow: inset 0 0 20px rgba(255, 215, 0, 0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: inset 0 0 30px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.6);
   }
   100% {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(1);
-    box-shadow: 0 0 40px 20px rgba(255, 215, 0, 0);
+    transform: scale(1.2);
+    box-shadow: inset 0 0 40px rgba(255, 215, 0, 0), 0 0 60px rgba(255, 215, 0, 0);
   }
 }
 
