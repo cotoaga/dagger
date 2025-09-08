@@ -1405,6 +1405,7 @@ This personality framework helps you understand my thinking patterns and communi
           onPersonalitySelect={handlePersonalitySelect}
           availablePersonalities={availablePersonalities}
           onNavigateToPrompts={() => handleViewChange('prompts')}
+          onHideWelcomeScreen={() => setShowWelcomeScreen(false)}
         />
       )}
       

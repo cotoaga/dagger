@@ -4,6 +4,20 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Separate React and ReactDOM into their own chunk
+          react: ['react', 'react-dom'],
+          // Separate Cytoscape (graph visualization) into its own chunk
+          cytoscape: ['cytoscape', 'cytoscape-dagre'],
+          // Separate markdown and syntax highlighting
+          markdown: ['react-markdown', 'react-syntax-highlighter'],
+        }
+      }
+    }
+  },
   test: {
     globals: true,
     environment: 'jsdom',

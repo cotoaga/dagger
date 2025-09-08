@@ -144,16 +144,56 @@
   overflow: hidden;
 }
 
-/* Dramatic Click Effect */
+/* Enhanced Dramatic Click Effect */
 .personality-button:active {
-  transform: scale(0.95);
-  box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.3);
+  transform: scale(0.92);
+  box-shadow: inset 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Ripple Effect on Click */
+.personality-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.personality-button::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(0, 255, 65, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s ease-out, height 0.6s ease-out;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.personality-button.ripple-effect::after {
+  width: 400px;
+  height: 400px;
+  opacity: 1;
+  animation: ripple-fade 0.6s ease-out;
+}
+
+@keyframes ripple-fade {
+  0% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
 
 .personality-button:hover {
   border-color: #00ff41;
-  transform: translateY(-5px);
-  box-shadow: 0 10px 30px rgba(0, 255, 65, 0.2);
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 15px 35px rgba(0, 255, 65, 0.25);
+  background: rgba(0, 255, 65, 0.08);
 }
 
 .personality-button.selected {
@@ -307,8 +347,9 @@
 
 .the-bar-button:hover {
   border-color: #ffd700;
-  box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3);
-  background: linear-gradient(135deg, rgba(139, 69, 19, 0.15) 0%, rgba(255, 215, 0, 0.1) 100%);
+  transform: translateY(-8px) scale(1.03);
+  box-shadow: 0 15px 35px rgba(255, 215, 0, 0.4);
+  background: linear-gradient(135deg, rgba(139, 69, 19, 0.2) 0%, rgba(255, 215, 0, 0.15) 100%);
 }
 
 .the-bar-button .personality-icon {
@@ -323,8 +364,35 @@
 
 /* Enhanced dramatic click effect for The Bar */
 .the-bar-button:active {
-  transform: scale(0.95);
-  box-shadow: inset 0 4px 8px rgba(139, 69, 19, 0.4);
+  transform: scale(0.90);
+  box-shadow: inset 0 6px 12px rgba(139, 69, 19, 0.5);
+}
+
+/* Special golden ripple for The Bar */
+.the-bar-button::after {
+  background: rgba(255, 215, 0, 0.4) !important;
+}
+
+.the-bar-button.ripple-effect::after {
+  animation: golden-ripple-fade 0.8s ease-out;
+}
+
+@keyframes golden-ripple-fade {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0);
+    box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7);
+  }
+  50% {
+    opacity: 0.6;
+    transform: translate(-50%, -50%) scale(0.5);
+    box-shadow: 0 0 20px 10px rgba(255, 215, 0, 0.3);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+    box-shadow: 0 0 40px 20px rgba(255, 215, 0, 0);
+  }
 }
 
 /* Footer */

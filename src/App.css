@@ -1,3 +1,6 @@
+/* Unicode Font Support for Multicultural Matrix */
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600&display=swap");
+
 /* CSS Variables for Theming */
 :root {
   /* Default to dark theme */
@@ -56,10 +59,19 @@
 /* Apply to all buttons by default */
 button {
   transition: transform 0.1s ease-out, box-shadow 0.2s ease-out;
+  position: relative;
+  overflow: hidden;
 }
 
 button:active {
-  transform: scale(0.95);
+  transform: scale(0.92);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Enhanced hover effects for buttons */
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 /* Session API Key Input Screen */
@@ -2905,9 +2917,6 @@ html.dark {
   0%, 100% { opacity: 0.7; }
   50% { opacity: 1; }
 }
-
-/* Unicode Font Support for Multicultural Matrix */
-@import url("https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600&display=swap");
 
 /* Matrix Rain with Unicode Support */
 .matrix-rain {

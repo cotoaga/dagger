@@ -3,7 +3,7 @@ import PersonalityButton from './PersonalityButton';
 import MatrixRain from './MatrixRain';
 import './WelcomeScreen.css';
 
-const WelcomeScreen = ({ onPersonalitySelect, availablePersonalities, onNavigateToPrompts }) => {
+const WelcomeScreen = ({ onPersonalitySelect, availablePersonalities, onNavigateToPrompts, onHideWelcomeScreen }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [selectedPersonality, setSelectedPersonality] = useState(null);
 
@@ -15,9 +15,9 @@ const WelcomeScreen = ({ onPersonalitySelect, availablePersonalities, onNavigate
   const handlePersonalitySelect = async (personalityId, event) => {
     setSelectedPersonality(personalityId);
     
-    // Add dramatic effect
+    // Add dramatic ripple effect
     const card = event.currentTarget;
-    card.classList.add('activating');
+    card.classList.add('activating', 'ripple-effect');
     
     // Sound effect (optional)
     // playSound('portal-open.mp3');
@@ -27,21 +27,27 @@ const WelcomeScreen = ({ onPersonalitySelect, availablePersonalities, onNavigate
       onPersonalitySelect(personalityId);
     }, 400);
     
-    // Remove animation class after completion
+    // Remove animation classes after completion
     setTimeout(() => {
-      card.classList.remove('activating');
+      card.classList.remove('activating', 'ripple-effect');
     }, 800);
   };
 
   const openPromptLibrary = (event) => {
     console.log('🍹 Opening The Bar - Prompt Library');
     
-    // Add dramatic effect
+    // Add dramatic golden ripple effect
     const card = event.currentTarget;
-    card.classList.add('activating');
+    card.classList.add('activating', 'ripple-effect');
     
     // Wait for animation to peak
     setTimeout(() => {
+      // Hide welcome screen first
+      if (onHideWelcomeScreen) {
+        onHideWelcomeScreen();
+      }
+      
+      // Then navigate to prompts
       if (onNavigateToPrompts) {
         onNavigateToPrompts();
       } else {
@@ -50,9 +56,9 @@ const WelcomeScreen = ({ onPersonalitySelect, availablePersonalities, onNavigate
       }
     }, 400);
     
-    // Remove animation class after completion
+    // Remove animation classes after completion
     setTimeout(() => {
-      card.classList.remove('activating');
+      card.classList.remove('activating', 'ripple-effect');
     }, 800);
   };
 
