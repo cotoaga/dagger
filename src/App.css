@@ -42,6 +42,26 @@
   box-sizing: border-box;
 }
 
+/* Dramatic Click Effect - Global Class */
+.dramatic-click {
+  transition: transform 0.1s ease-out, box-shadow 0.2s ease-out;
+  cursor: pointer;
+}
+
+.dramatic-click:active {
+  transform: scale(0.95);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Apply to all buttons by default */
+button {
+  transition: transform 0.1s ease-out, box-shadow 0.2s ease-out;
+}
+
+button:active {
+  transform: scale(0.95);
+}
+
 /* Session API Key Input Screen */
 .session-api-key-screen {
   display: flex;

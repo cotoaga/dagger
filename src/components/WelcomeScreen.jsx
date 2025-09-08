@@ -3,7 +3,7 @@ import PersonalityButton from './PersonalityButton';
 import MatrixRain from './MatrixRain';
 import './WelcomeScreen.css';
 
-const WelcomeScreen = ({ onPersonalitySelect, availablePersonalities }) => {
+const WelcomeScreen = ({ onPersonalitySelect, availablePersonalities, onNavigateToPrompts }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [selectedPersonality, setSelectedPersonality] = useState(null);
 
@@ -33,21 +33,27 @@ const WelcomeScreen = ({ onPersonalitySelect, availablePersonalities }) => {
     }, 800);
   };
 
-  const openPromptMixer = () => {
-    // Open the prompt editor in "create new" mode
-    console.log('🍹 Opening Pan-Galactic-Gargle-Blaster prompt mixer');
+  const openPromptLibrary = (event) => {
+    console.log('🍹 Opening The Bar - Prompt Library');
     
-    // For now, we'll use hash navigation - this can be enhanced based on routing setup
-    window.location.hash = '#prompts/editor';
+    // Add dramatic effect
+    const card = event.currentTarget;
+    card.classList.add('activating');
     
-    // Optional: Add mixing animation
-    document.body.classList.add('mixing-cocktail');
+    // Wait for animation to peak
     setTimeout(() => {
-      document.body.classList.remove('mixing-cocktail');
-    }, 1000);
+      if (onNavigateToPrompts) {
+        onNavigateToPrompts();
+      } else {
+        // Fallback to hash navigation
+        window.location.hash = '#prompts';
+      }
+    }, 400);
     
-    // Alternative: If the parent component has a way to switch views, call it
-    // if (onNavigateToEditor) onNavigateToEditor();
+    // Remove animation class after completion
+    setTimeout(() => {
+      card.classList.remove('activating');
+    }, 800);
   };
 
   return (
@@ -109,15 +115,16 @@ const WelcomeScreen = ({ onPersonalitySelect, availablePersonalities }) => {
           ))}
         </div>
 
-        {/* Fifth area - Prompt Library Access */}
+        {/* The Bar - Direct Prompt Library Access */}
         <div className="prompt-library-section">
-          <div className="personality-button prompt-library-button gargle-blaster-button" onClick={openPromptMixer}>
+          <div className="personality-button prompt-library-button the-bar-button" onClick={openPromptLibrary}>
+            <div className="hover-overlay"></div>
             <div className="button-content">
-              <div className="personality-icon">🍹</div>
+              <div className="personality-icon">🍸</div>
               <div className="personality-info">
-                <div className="personality-name">Pan-Galactic-Gargle-Blaster</div>
-                <div className="personality-description">Mix Your Own Prompt Cocktail</div>
-                <div className="subtitle">Access Prompt Library & Create Custom AI Personalities</div>
+                <div className="personality-name">The Bar</div>
+                <div className="personality-description">Pan-Galactic Gargle Blaster</div>
+                <div className="subtitle">Enter the Prompt Library</div>
               </div>
             </div>
           </div>

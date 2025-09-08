@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { DaggerInput } from './components/DaggerInput.jsx'
 import { DaggerOutput } from './components/DaggerOutput.jsx'
 import { DaggerInputDisplay } from './components/DaggerInputDisplay.jsx'
@@ -11,7 +11,6 @@ import WelcomeScreen from './components/WelcomeScreen.jsx'
 import SessionApiKeyInput from './components/SessionApiKeyInput.jsx'
 import { graphModel } from './models/GraphModel.js'
 import { claudeAPI as ClaudeAPI } from './services/ClaudeAPI.js'
-import { useVisibleConversation } from './hooks/useVisibleConversation.js'
 import PromptsModel from './models/PromptsModel.js'
 import ConfigService, { ConfigService as ConfigServiceClass } from './services/ConfigService.js'
 import { BranchContextManager } from './services/BranchContextManager.js'
@@ -1297,16 +1296,6 @@ This personality framework helps you understand my thinking patterns and communi
       starred: true
     },
     {
-      id: 'khaos-synthesizer-6',
-      name: 'KHAOS SYNTHESIZER V6.0',
-      description: 'Branch Merge Specialist - Cognitive compression without loss',
-      emoji: '🔮🤖',
-      category: 'merge',
-      chars: promptsModel.getPrompt('khaos-synthesizer-6')?.content.length || 1456,
-      lines: promptsModel.getPrompt('khaos-synthesizer-6')?.content.split('\n').length || 52,
-      starred: false
-    },
-    {
       id: 'khaos-analyst-6',
       name: 'KHAOS ANALYST V6.0',
       description: 'Deep Domain Explorer - Laser-focused analysis',
@@ -1415,6 +1404,7 @@ This personality framework helps you understand my thinking patterns and communi
         <WelcomeScreen
           onPersonalitySelect={handlePersonalitySelect}
           availablePersonalities={availablePersonalities}
+          onNavigateToPrompts={() => handleViewChange('prompts')}
         />
       )}
       
