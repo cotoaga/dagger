@@ -79,7 +79,7 @@ const SessionApiKeyInputDebug = ({ onApiKeySubmit, onTimeout }) => {
       addDebugLog('Step 1: Testing proxy connectivity...', 'info')
       
       const testPayload = {
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 10,
         messages: [
           {

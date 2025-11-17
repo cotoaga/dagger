@@ -134,7 +134,7 @@ class ConfigService {
           'x-session-api-key': apiKey
         },
         body: JSON.stringify({
-          model: 'claude-3-5-sonnet-20241022',
+          model: 'claude-sonnet-4-20250514',
           max_tokens: 10,
           messages: [
             {
