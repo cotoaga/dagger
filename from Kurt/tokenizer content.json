@@ -1,0 +1,55 @@
+{
+  "meta": {
+    "title": "Tokenizer Comparison",
+    "tagline": "Real-time tokenization across AI providers",
+    "description": "Compare how different AI providers tokenize your text. See token counts, IDs, and splits side-by-side.",
+    "version": "1.0.0"
+  },
+  "providers": [
+    {
+      "id": "anthropic",
+      "name": "Anthropic Claude",
+      "displayName": "Anthropic",
+      "defaultModel": "claude-sonnet-4-5-20250929",
+      "color": "#00A86B",
+      "note": "Proprietary tokenization"
+    },
+    {
+      "id": "openai",
+      "name": "OpenAI GPT",
+      "displayName": "OpenAI",
+      "defaultModel": "gpt-4o",
+      "color": "#0088FF",
+      "note": "Full breakdown via tiktoken"
+    },
+    {
+      "id": "gemini",
+      "name": "Google Gemini",
+      "displayName": "Google Gemini",
+      "defaultModel": "gemini-2.0-flash-exp",
+      "color": "#00D4FF",
+      "note": "Proprietary tokenization"
+    },
+    {
+      "id": "xai",
+      "name": "xAI Grok",
+      "displayName": "xAI Grok",
+      "defaultModel": "grok-beta",
+      "color": "#FF8800",
+      "note": "OpenAI-compatible (tiktoken)"
+    }
+  ],
+  "ui": {
+    "inputPlaceholder": "Enter text to tokenize and compare across providers...",
+    "autoUpdateLabel": "Auto-update on typing (1 second debounce)",
+    "emptyState": "Enter text to see tokens",
+    "loadingState": "Tokenizing...",
+    "errorState": "Failed to tokenize"
+  },
+  "stats": {
+    "words": "Words",
+    "characters": "Characters",
+    "numbers": "Numbers",
+    "other": "Other"
+  }
+}

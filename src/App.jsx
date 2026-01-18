@@ -20,6 +20,7 @@ import { MessageFormatter } from './services/MessageFormatter.js'
 import { TokenGauge } from './components/TokenGauge.jsx'
 import { TokenUsageDisplay, SessionTokenSummary } from './components/TokenUsageDisplay.jsx'
 import { TokenizerPopup } from './components/TokenizerPopup.jsx'
+import { UIProvider, useUI } from './contexts/UIContext.jsx'
 import './App.css'
 
 // Dynamic session timer component
@@ -81,7 +82,27 @@ const getRandomHonestStatus = () => {
   return honestStatusMessages[Math.floor(Math.random() * honestStatusMessages.length)]
 }
 
-function App() {
+function AppContent() {
+  // Get UI state from context
+  const {
+    currentView,
+    handleViewChange,
+    darkMode,
+    toggleDarkMode,
+    showWelcomeScreen,
+    setShowWelcomeScreen,
+    selectedPersonality,
+    setSelectedPersonality,
+    showBranchMenu,
+    branchSourceId,
+    setShowBranchMenu,
+    setBranchSourceId,
+    tokenizerState,
+    handleOpenTokenizer,
+    handleCloseTokenizer
+  } = useUI();
+
+  // Non-UI state (conversations, processing, configuration, session)
   const [conversations, setConversations] = useState([])
   const [currentConversationId, setCurrentConversationId] = useState(null)
   const selectedNodeId = currentConversationId
@@ -89,11 +110,6 @@ function App() {
   const [currentStatus, setCurrentStatus] = useState('')
   const [apiKey, setApiKey] = useState('')
   const [sessionApiKey, setSessionApiKey] = useState('')
-  const [darkMode, setDarkMode] = useState(() => {
-    // Default to dark mode, or load from localStorage
-    const saved = localStorage.getItem('dagger-dark-mode')
-    return saved ? JSON.parse(saved) : true
-  })
   const [apiTestStatus, setApiTestStatus] = useState('')
   const [selectedModel, setSelectedModel] = useState(() => {
     return localStorage.getItem('dagger-model') || 'claude-sonnet-4-20250514'
@@ -103,43 +119,9 @@ function App() {
     return saved ? parseFloat(saved) : 0.7 // Default Claude temperature
   })
   const [extendedThinking, setExtendedThinking] = useState(false)
-  const [currentView, setCurrentView] = useState(() => {
-    return localStorage.getItem('dagger-view') || 'linear'
-  }) // 'linear' | 'graph' | 'prompts'
-  const [showBranchMenu, setShowBranchMenu] = useState(false)
-  const [branchSourceId, setBranchSourceId] = useState(null)
   const [currentBranchContext, setCurrentBranchContext] = useState(null)
   const conversationRefs = useRef({})
-  
-  // Tokenizer popup state
-  const [tokenizerState, setTokenizerState] = useState({
-    isOpen: false,
-    content: '',
-    conversationId: null
-  })
 
-  // Tokenizer handlers
-  const handleOpenTokenizer = useCallback((content, conversationId) => {
-    setTokenizerState({
-      isOpen: true,
-      content: content,
-      conversationId: conversationId
-    })
-  }, [])
-
-  const handleCloseTokenizer = useCallback(() => {
-    setTokenizerState({
-      isOpen: false,
-      content: '',
-      conversationId: null
-    })
-  }, [])
-  
-  // Welcome screen state
-  const [showWelcomeScreen, setShowWelcomeScreen] = useState(() => {
-    return graphModel.getAllConversations().length === 0
-  })
-  const [selectedPersonality, setSelectedPersonality] = useState(null)
   const [promptsModel] = useState(() => new PromptsModel())
   const [branchContextManager] = useState(() => new BranchContextManager(graphModel, promptsModel))
   
@@ -439,28 +421,7 @@ function App() {
     }
   }, [selectedModel])
 
-  const toggleDarkMode = useCallback(() => {
-    const newMode = !darkMode
-    setDarkMode(newMode)
-    localStorage.setItem('dagger-dark-mode', JSON.stringify(newMode))
-    
-    // Apply dark mode to html element as well
-    if (newMode) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-  }, [darkMode])
-
-  // Apply dark mode on mount
-  useEffect(() => {
-    console.log('🔄 useEffect [darkMode] triggered');
-    if (darkMode) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-  }, [darkMode])
+  // Note: toggleDarkMode and dark mode application now handled by UIContext
 
   // Simplified auto-scroll: scroll to selected conversation when switching to linear view
   useEffect(() => {
@@ -532,10 +493,7 @@ function App() {
     }
   }, [apiKey])
 
-  const handleViewChange = useCallback((view) => {
-    setCurrentView(view)
-    localStorage.setItem('dagger-view', view)
-  }, [])
+  // Note: handleViewChange now handled by UIContext
 
   const handleNodeSelect = useCallback((nodeId, nodeData) => {
     console.log('🎯 Graph node selected:', nodeId);
@@ -1774,6 +1732,15 @@ This personality framework helps you understand my thinking patterns and communi
       )}
     </div>
   )
+}
+
+// Wrap AppContent with UIProvider
+function App() {
+  return (
+    <UIProvider>
+      <AppContent />
+    </UIProvider>
+  );
 }
 
 export default App
