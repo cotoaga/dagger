@@ -22,6 +22,7 @@ import { TokenUsageDisplay, SessionTokenSummary } from './components/TokenUsageD
 import { TokenizerPopup } from './components/TokenizerPopup.jsx'
 import { UIProvider, useUI } from './contexts/UIContext.jsx'
 import { ConfigurationProvider, useConfiguration } from './contexts/ConfigurationContext.jsx'
+import { SessionProvider, useSession } from './contexts/SessionContext.jsx'
 import './App.css'
 
 // Dynamic session timer component
@@ -114,28 +115,34 @@ function AppContent() {
     modelSupportsExtendedThinking
   } = useConfiguration();
 
-  // Non-UI state (conversations, processing, session)
+  // Get session state from context
+  const {
+    apiKey,
+    sessionApiKey,
+    apiKeyConfigured,
+    configurationLoading,
+    backendError,
+    apiTestStatus,
+    lastActivity,
+    updateActivity,
+    handleApiKeySubmit,
+    checkApiKeyConfiguration,
+    handleSessionTimeout
+  } = useSession();
+
+  // Non-UI state (conversations, processing)
   const [conversations, setConversations] = useState([])
   const [currentConversationId, setCurrentConversationId] = useState(null)
   const selectedNodeId = currentConversationId
   const [isProcessing, setIsProcessing] = useState(false)
   const [currentStatus, setCurrentStatus] = useState('')
-  const [apiKey, setApiKey] = useState('')
-  const [sessionApiKey, setSessionApiKey] = useState('')
-  const [apiTestStatus, setApiTestStatus] = useState('')
   const [currentBranchContext, setCurrentBranchContext] = useState(null)
   const conversationRefs = useRef({})
 
   const [promptsModel] = useState(() => new PromptsModel())
   const [branchContextManager] = useState(() => new BranchContextManager(graphModel, promptsModel))
-  
-  // API configuration state (simplified)
-  const [apiKeyConfigured, setApiKeyConfigured] = useState(false)
-  const [configurationLoading, setConfigurationLoading] = useState(true)
-  const [backendError, setBackendError] = useState(null)
-  
-  // Session management state for volatile API key
-  const [lastActivity, setLastActivity] = useState(Date.now())
+
+  // Note: API configuration and session state now managed by SessionContext
 
   // Add debug tracking right after state declarations
   useEffect(() => {
@@ -153,50 +160,8 @@ function AppContent() {
     });
   }, [conversations, currentConversationId, currentView, isProcessing, sessionApiKey, apiKeyConfigured, configurationLoading, showWelcomeScreen, selectedPersonality]);
 
-  // Auto-detect API key configuration on startup
-  const checkApiKeyConfiguration = useCallback(async () => {
-    setConfigurationLoading(true);
-    setBackendError(null);
-    
-    try {
-      // Check backend config with current session key context
-      const config = await ConfigService.checkBackendConfig(sessionApiKey);
-      
-      setBackendError('');
-      
-      // If we have a session key, we're configured regardless of backend
-      if (sessionApiKey && sessionApiKey.trim()) {
-        setApiKeyConfigured(true);
-        return;
-      }
-      
-      // Otherwise use backend config result
-      setApiKeyConfigured(config.apiKeyConfigured);
-      
-      if (config.apiKeyConfigured) {
-        console.log('✅ API key configured via:', config.configSource);
-      }
-    } catch (error) {
-      console.error('❌ Backend configuration check failed:', error);
-      setBackendError(error.message);
-      
-      // If we have session key, still allow operation
-      if (sessionApiKey && sessionApiKey.trim()) {
-        setApiKeyConfigured(true);
-        setBackendError('');
-      } else {
-        setApiKeyConfigured(false);
-      }
-    } finally {
-      setConfigurationLoading(false);
-    }
-  }, [sessionApiKey]);
-  
-  useEffect(() => {
-    console.log('🔄 useEffect [checkApiKeyConfiguration] triggered');
-    checkApiKeyConfiguration();
-  }, [checkApiKeyConfiguration]);
-  
+  // Note: checkApiKeyConfiguration now handled by SessionContext
+
   // Load conversations on mount (after API check) with comprehensive state restoration debugging
   useEffect(() => {
     console.log('🔄 useEffect [apiKeyConfigured] triggered');
@@ -282,20 +247,7 @@ function AppContent() {
     
   }, [graphModel])
 
-  // Session timeout handler with state preservation
-  const handleSessionTimeout = useCallback(() => {
-    console.log('⏰ Session timeout detected, preserving state...');
-    
-    // Force save current state
-    graphModel.saveToStorage();
-    
-    // Mark that we need complete restoration on next login
-    localStorage.setItem('dagger-needs-full-restore', 'true');
-    
-    setSessionApiKey('');
-    setApiKeyConfigured(false);
-    
-  }, [graphModel])
+  // Note: handleSessionTimeout now handled by SessionContext
 
   // Session restore handler
   const handleSessionRestore = useCallback(() => {
@@ -345,35 +297,9 @@ function AppContent() {
   }, [sessionApiKey, lastActivity])
   */
 
-  // Session timeout effect - FIXED VERSION
-  useEffect(() => {
-    console.log('🔄 useEffect [sessionApiKey-timeout] triggered');
-    
-    if (!sessionApiKey) {
-      console.log('✅ Session timeout effect completed (no session key)');
-      return;
-    }
+  // Note: Session timeout monitoring now handled by SessionContext
 
-    const checkTimeout = setInterval(() => {
-      const now = Date.now()
-      const timeSinceActivity = now - lastActivity  // Read current lastActivity value
-      const thirtyMinutes = 30 * 60 * 1000
-
-      if (timeSinceActivity > thirtyMinutes) {
-        console.log('🔥 Session expired - clearing API key')
-        setSessionApiKey('')
-        setApiKeyConfigured(false)
-      }
-    }, 60000) // Check every minute
-
-    console.log('✅ Session timeout effect completed (interval set)');
-    return () => {
-      console.log('🧹 Session timeout cleanup');
-      clearInterval(checkTimeout);
-    };
-  }, [sessionApiKey]) // REMOVED lastActivity from dependencies to break the loop
-
-  // Activity listeners for session management
+  // Activity listeners for session management (updates SessionContext)
   useEffect(() => {
     console.log('🔄 useEffect [activity-listeners] triggered');
     const events = ['click', 'keypress', 'scroll', 'mousemove']
@@ -402,30 +328,9 @@ function AppContent() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [])
 
-  const handleApiKeySubmit = useCallback(async (key) => {
-    if (!ClaudeAPI.validateApiKey(key)) {
-      setApiTestStatus('❌ Invalid API key format')
-      return
-    }
-
-    setApiTestStatus('🧪 Testing API key...')
-    ClaudeAPI.setApiKey(key)
-    ClaudeAPI.setModel(selectedModel)
-    
-    try {
-      const result = await ClaudeAPI.testApiKey()
-      if (result.success) {
-        setApiKey(key)
-        setApiTestStatus('✅ API key working!')
-      } else {
-        setApiTestStatus(`❌ ${result.message}`)
-      }
-    } catch (error) {
-      setApiTestStatus(`❌ Test failed: ${error.message}`)
-    }
-  }, [selectedModel])
-
-  // Note: toggleDarkMode and dark mode application now handled by UIContext
+  // Note: handleApiKeySubmit, checkApiKeyConfiguration, handleSessionTimeout now handled by SessionContext
+  // Note: handleModelChange and handleExtendedThinkingChange now handled by ConfigurationContext
+  // Note: toggleDarkMode and handleViewChange now handled by UIContext
 
   // Simplified auto-scroll: scroll to selected conversation when switching to linear view
   useEffect(() => {
@@ -1720,7 +1625,9 @@ function App() {
   return (
     <UIProvider>
       <ConfigurationProvider>
-        <AppContent />
+        <SessionProvider>
+          <AppContent />
+        </SessionProvider>
       </ConfigurationProvider>
     </UIProvider>
   );
