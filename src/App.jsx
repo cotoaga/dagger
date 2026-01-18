@@ -222,10 +222,7 @@ function AppContent() {
     }
   }, [apiKeyConfigured])
 
-  // Activity tracking for session management
-  const updateActivity = useCallback(() => {
-    setLastActivity(Date.now())
-  }, [])
+  // Note: updateActivity now provided by SessionContext
 
   // Force complete restoration mechanism
   const forceCompleteRestore = useCallback(() => {
