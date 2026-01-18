@@ -21,6 +21,7 @@ import { TokenGauge } from './components/TokenGauge.jsx'
 import { TokenUsageDisplay, SessionTokenSummary } from './components/TokenUsageDisplay.jsx'
 import { TokenizerPopup } from './components/TokenizerPopup.jsx'
 import { UIProvider, useUI } from './contexts/UIContext.jsx'
+import { ConfigurationProvider, useConfiguration } from './contexts/ConfigurationContext.jsx'
 import './App.css'
 
 // Dynamic session timer component
@@ -102,7 +103,18 @@ function AppContent() {
     handleCloseTokenizer
   } = useUI();
 
-  // Non-UI state (conversations, processing, configuration, session)
+  // Get configuration state from context
+  const {
+    selectedModel,
+    temperature,
+    extendedThinking,
+    handleModelChange,
+    handleTemperatureChange,
+    handleExtendedThinkingChange,
+    modelSupportsExtendedThinking
+  } = useConfiguration();
+
+  // Non-UI state (conversations, processing, session)
   const [conversations, setConversations] = useState([])
   const [currentConversationId, setCurrentConversationId] = useState(null)
   const selectedNodeId = currentConversationId
@@ -111,14 +123,6 @@ function AppContent() {
   const [apiKey, setApiKey] = useState('')
   const [sessionApiKey, setSessionApiKey] = useState('')
   const [apiTestStatus, setApiTestStatus] = useState('')
-  const [selectedModel, setSelectedModel] = useState(() => {
-    return localStorage.getItem('dagger-model') || 'claude-sonnet-4-20250514'
-  })
-  const [temperature, setTemperature] = useState(() => {
-    const saved = localStorage.getItem('dagger-temperature')
-    return saved ? parseFloat(saved) : 0.7 // Default Claude temperature
-  })
-  const [extendedThinking, setExtendedThinking] = useState(false)
   const [currentBranchContext, setCurrentBranchContext] = useState(null)
   const conversationRefs = useRef({})
 
@@ -469,31 +473,8 @@ function AppContent() {
   );
   */
 
-  const handleModelChange = useCallback((model) => {
-    setSelectedModel(model)
-    localStorage.setItem('dagger-model', model)
-    
-    // Update API singleton if connected
-    if (apiKey) {
-      ClaudeAPI.setModel(model)
-      ClaudeAPI.setExtendedThinking(extendedThinking)
-    }
-
-    // Reset extended thinking if model doesn't support it
-    if (!ClaudeAPI.MODELS[model]?.supportsExtendedThinking) {
-      setExtendedThinking(false)
-    }
-  }, [apiKey, extendedThinking])
-
-  // Handle extended thinking toggle
-  const handleExtendedThinkingChange = useCallback((enabled) => {
-    setExtendedThinking(enabled)
-    if (apiKey) {
-      ClaudeAPI.setExtendedThinking(enabled)
-    }
-  }, [apiKey])
-
-  // Note: handleViewChange now handled by UIContext
+  // Note: handleModelChange and handleExtendedThinkingChange now handled by ConfigurationContext
+  // Note: handleViewChange and toggleDarkMode now handled by UIContext
 
   const handleNodeSelect = useCallback((nodeId, nodeData) => {
     console.log('🎯 Graph node selected:', nodeId);
@@ -1392,8 +1373,8 @@ This personality framework helps you understand my thinking patterns and communi
               </option>
             ))}
           </select>
-          
-          {ClaudeAPI.MODELS[selectedModel]?.supportsExtendedThinking && (
+
+          {modelSupportsExtendedThinking && (
             <label className="extended-thinking-toggle" style={{
               display: 'flex',
               alignItems: 'center',
@@ -1734,11 +1715,13 @@ This personality framework helps you understand my thinking patterns and communi
   )
 }
 
-// Wrap AppContent with UIProvider
+// Wrap AppContent with context providers
 function App() {
   return (
     <UIProvider>
-      <AppContent />
+      <ConfigurationProvider>
+        <AppContent />
+      </ConfigurationProvider>
     </UIProvider>
   );
 }
