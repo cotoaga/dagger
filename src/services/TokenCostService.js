@@ -43,19 +43,37 @@ export class TokenCostService {
       cached: 0.03,  // $0.03 per 1M cached tokens
       name: 'Claude 3 Haiku'
     },
-    // Claude Sonnet 4 (if available)
-    'claude-sonnet-4-20250514': {
-      input: 3.00,   // Estimated pricing
-      output: 15.00, // Estimated pricing
-      cached: 0.30,  // Estimated pricing
-      name: 'Claude Sonnet 4'
+    // Claude 4.5 Models (Latest - 2026)
+    'claude-sonnet-4-5-20250929': {
+      input: 3.00,   // Official pricing
+      output: 15.00, // Official pricing
+      cached: 0.30,  // Estimated cached pricing
+      name: 'Claude Sonnet 4.5'
     },
-    // Claude Opus 4 (if available)
+    'claude-haiku-4-5-20251001': {
+      input: 1.00,   // Official pricing
+      output: 5.00,  // Official pricing
+      cached: 0.10,  // Estimated cached pricing
+      name: 'Claude Haiku 4.5'
+    },
+    'claude-opus-4-5-20251101': {
+      input: 5.00,   // Official pricing
+      output: 25.00, // Official pricing
+      cached: 0.50,  // Estimated cached pricing
+      name: 'Claude Opus 4.5'
+    },
+    // Legacy Claude 4 Models (for backwards compatibility)
+    'claude-sonnet-4-20250514': {
+      input: 3.00,
+      output: 15.00,
+      cached: 0.30,
+      name: 'Claude Sonnet 4 (Legacy)'
+    },
     'claude-opus-4-20250514': {
-      input: 15.00,  // Estimated pricing
-      output: 75.00, // Estimated pricing
-      cached: 1.50,  // Estimated pricing
-      name: 'Claude Opus 4'
+      input: 15.00,  // Old Opus 4 pricing
+      output: 75.00,
+      cached: 1.50,
+      name: 'Claude Opus 4 (Legacy)'
     }
   };
 

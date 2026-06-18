@@ -37,12 +37,18 @@ export function DaggerOutput({ response, displayNumber, isLoading = false, conve
 
   const getModelDisplayName = useCallback((model) => {
     switch (model) {
+      case 'claude-sonnet-4-5-20250929': return '🧠 Sonnet 4.5';
+      case 'claude-haiku-4-5-20251001': return '⚡ Haiku 4.5';
+      case 'claude-opus-4-5-20251101': return '🚀 Opus 4.5';
       case 'claude-sonnet-4-20250514': return '🧠 Sonnet 4';
       case 'claude-opus-4-20250514': return '🚀 Opus 4';
       case 'claude-3-5-sonnet-20241022': return '⚙️ Sonnet 3.5';
       case 'claude-3-5-haiku-20241022': return '🍃 Haiku 3.5';
       case 'claude-3-opus-20240229': return '🎵 Opus 3';
       default:
+        if (model?.includes('sonnet-4-5')) return '🧠 Sonnet 4.5';
+        if (model?.includes('haiku-4-5')) return '⚡ Haiku 4.5';
+        if (model?.includes('opus-4-5')) return '🚀 Opus 4.5';
         if (model?.includes('sonnet-4')) return '🧠 Sonnet 4';
         if (model?.includes('opus-4')) return '🚀 Opus 4';
         if (model?.includes('sonnet')) return '🎭 Sonnet';
@@ -54,12 +60,18 @@ export function DaggerOutput({ response, displayNumber, isLoading = false, conve
 
   const getModelClass = useCallback((model) => {
     switch (model) {
+      case 'claude-sonnet-4-5-20250929': return 'sonnet-4-5';
+      case 'claude-haiku-4-5-20251001': return 'haiku-4-5';
+      case 'claude-opus-4-5-20251101': return 'opus-4-5';
       case 'claude-sonnet-4-20250514': return 'sonnet-4';
       case 'claude-opus-4-20250514': return 'opus-4';
       case 'claude-3-5-sonnet-20241022': return 'sonnet-3-5';
       case 'claude-3-5-haiku-20241022': return 'haiku-3-5';
       case 'claude-3-opus-20240229': return 'opus-3';
       default:
+        if (model?.includes('sonnet-4-5')) return 'sonnet-4-5';
+        if (model?.includes('haiku-4-5')) return 'haiku-4-5';
+        if (model?.includes('opus-4-5')) return 'opus-4-5';
         if (model?.includes('sonnet-4')) return 'sonnet-4';
         if (model?.includes('opus-4')) return 'opus-4';
         if (model?.includes('sonnet-3-5')) return 'sonnet-3-5';

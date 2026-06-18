@@ -9,7 +9,7 @@ interface PromptMetadata {
   description: string;
   starred: boolean;
   isDefault: boolean;
-  usage: 'branch' | 'merge';
+  usage: 'branch' | 'merge' | 'root';
   created: string;
   modified: string;
 }
@@ -26,6 +26,7 @@ import khaosSpecialistV7 from './personality/khaos-specialist-v7.xml?raw';
 import vanillaClaude from './personality/vanilla-claude.xml?raw';
 import khaosSynthesizerV7 from './system/khaos-synthesizer-v7.xml?raw';
 import khaosSqueezerV7 from './system/khaos-squeezer-v7.xml?raw';
+import daggerRootSystem from './system/dagger-root-system.xml?raw';
 
 class PromptRegistry {
   private prompts: Map<string, Prompt> = new Map();
@@ -43,7 +44,8 @@ class PromptRegistry {
       khaosSpecialistV7,
       vanillaClaude,
       khaosSynthesizerV7,
-      khaosSqueezerV7
+      khaosSqueezerV7,
+      daggerRootSystem
     ];
 
     xmlFiles.forEach(xmlContent => {
@@ -142,6 +144,11 @@ class PromptRegistry {
   getDefaultMergePrompt(): Prompt | undefined {
     return Array.from(this.prompts.values())
       .find(p => p.metadata.usage === 'merge' && p.metadata.isDefault);
+  }
+
+  getRootSystemPrompt(): Prompt | undefined {
+    return Array.from(this.prompts.values())
+      .find(p => p.metadata.usage === 'root');
   }
 
   getStarredPrompts(): Prompt[] {

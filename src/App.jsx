@@ -20,6 +20,13 @@ import { MessageFormatter } from './services/MessageFormatter.js'
 import { TokenGauge } from './components/TokenGauge.jsx'
 import { TokenUsageDisplay, SessionTokenSummary } from './components/TokenUsageDisplay.jsx'
 import { TokenizerPopup } from './components/TokenizerPopup.jsx'
+import { UIProvider, useUI } from './contexts/UIContext.jsx'
+import { ConfigurationProvider, useConfiguration } from './contexts/ConfigurationContext.jsx'
+import { SessionProvider, useSession } from './contexts/SessionContext.jsx'
+import { DebugProvider, useDebug } from './contexts/DebugContext.jsx'
+import { DebugPanel } from './components/DebugPanel.jsx'
+import { TestTemplatePanel } from './components/TestTemplatePanel.jsx'
+import { DebugToolbar } from './components/DebugToolbar.jsx'
 import './App.css'
 
 // Dynamic session timer component
@@ -81,75 +88,73 @@ const getRandomHonestStatus = () => {
   return honestStatusMessages[Math.floor(Math.random() * honestStatusMessages.length)]
 }
 
-function App() {
+function AppContent() {
+  // Get UI state from context
+  const {
+    currentView,
+    handleViewChange,
+    darkMode,
+    toggleDarkMode,
+    showWelcomeScreen,
+    setShowWelcomeScreen,
+    selectedPersonality,
+    setSelectedPersonality,
+    showBranchMenu,
+    branchSourceId,
+    setShowBranchMenu,
+    setBranchSourceId,
+    tokenizerState,
+    handleOpenTokenizer,
+    handleCloseTokenizer
+  } = useUI();
+
+  // Get configuration state from context
+  const {
+    selectedModel,
+    temperature,
+    extendedThinking,
+    handleModelChange,
+    handleTemperatureChange,
+    handleExtendedThinkingChange,
+    modelSupportsExtendedThinking
+  } = useConfiguration();
+
+  // Get session state from context
+  const {
+    apiKey,
+    sessionApiKey,
+    setSessionApiKey,
+    apiKeyConfigured,
+    setApiKeyConfigured,
+    configurationLoading,
+    backendError,
+    apiTestStatus,
+    lastActivity,
+    updateActivity,
+    handleApiKeySubmit,
+    checkApiKeyConfiguration,
+    handleSessionTimeout
+  } = useSession();
+
+  // Get debug state from context (DEV mode only)
+  const isDev = import.meta.env.DEV;
+  const debugContext = isDev ? useDebug() : null;
+  const { toggleDebugPanel } = debugContext || {};
+
+  // Non-UI state (conversations, processing)
   const [conversations, setConversations] = useState([])
   const [currentConversationId, setCurrentConversationId] = useState(null)
   const selectedNodeId = currentConversationId
   const [isProcessing, setIsProcessing] = useState(false)
   const [currentStatus, setCurrentStatus] = useState('')
-  const [apiKey, setApiKey] = useState('')
-  const [sessionApiKey, setSessionApiKey] = useState('')
-  const [darkMode, setDarkMode] = useState(() => {
-    // Default to dark mode, or load from localStorage
-    const saved = localStorage.getItem('dagger-dark-mode')
-    return saved ? JSON.parse(saved) : true
-  })
-  const [apiTestStatus, setApiTestStatus] = useState('')
-  const [selectedModel, setSelectedModel] = useState(() => {
-    return localStorage.getItem('dagger-model') || 'claude-sonnet-4-20250514'
-  })
-  const [temperature, setTemperature] = useState(() => {
-    const saved = localStorage.getItem('dagger-temperature')
-    return saved ? parseFloat(saved) : 0.7 // Default Claude temperature
-  })
-  const [extendedThinking, setExtendedThinking] = useState(false)
-  const [currentView, setCurrentView] = useState(() => {
-    return localStorage.getItem('dagger-view') || 'linear'
-  }) // 'linear' | 'graph' | 'prompts'
-  const [showBranchMenu, setShowBranchMenu] = useState(false)
-  const [branchSourceId, setBranchSourceId] = useState(null)
   const [currentBranchContext, setCurrentBranchContext] = useState(null)
   const conversationRefs = useRef({})
-  
-  // Tokenizer popup state
-  const [tokenizerState, setTokenizerState] = useState({
-    isOpen: false,
-    content: '',
-    conversationId: null
-  })
+  const inputRef = useRef(null)
 
-  // Tokenizer handlers
-  const handleOpenTokenizer = useCallback((content, conversationId) => {
-    setTokenizerState({
-      isOpen: true,
-      content: content,
-      conversationId: conversationId
-    })
-  }, [])
-
-  const handleCloseTokenizer = useCallback(() => {
-    setTokenizerState({
-      isOpen: false,
-      content: '',
-      conversationId: null
-    })
-  }, [])
-  
-  // Welcome screen state
-  const [showWelcomeScreen, setShowWelcomeScreen] = useState(() => {
-    return graphModel.getAllConversations().length === 0
-  })
-  const [selectedPersonality, setSelectedPersonality] = useState(null)
   const [promptsModel] = useState(() => new PromptsModel())
   const [branchContextManager] = useState(() => new BranchContextManager(graphModel, promptsModel))
-  
-  // API configuration state (simplified)
-  const [apiKeyConfigured, setApiKeyConfigured] = useState(false)
-  const [configurationLoading, setConfigurationLoading] = useState(true)
-  const [backendError, setBackendError] = useState(null)
-  
-  // Session management state for volatile API key
-  const [lastActivity, setLastActivity] = useState(Date.now())
+
+  // Note: API configuration and session state now managed by SessionContext
 
   // Add debug tracking right after state declarations
   useEffect(() => {
@@ -167,50 +172,30 @@ function App() {
     });
   }, [conversations, currentConversationId, currentView, isProcessing, sessionApiKey, apiKeyConfigured, configurationLoading, showWelcomeScreen, selectedPersonality]);
 
-  // Auto-detect API key configuration on startup
-  const checkApiKeyConfiguration = useCallback(async () => {
-    setConfigurationLoading(true);
-    setBackendError(null);
-    
-    try {
-      // Check backend config with current session key context
-      const config = await ConfigService.checkBackendConfig(sessionApiKey);
-      
-      setBackendError('');
-      
-      // If we have a session key, we're configured regardless of backend
-      if (sessionApiKey && sessionApiKey.trim()) {
-        setApiKeyConfigured(true);
-        return;
-      }
-      
-      // Otherwise use backend config result
-      setApiKeyConfigured(config.apiKeyConfigured);
-      
-      if (config.apiKeyConfigured) {
-        console.log('✅ API key configured via:', config.configSource);
-      }
-    } catch (error) {
-      console.error('❌ Backend configuration check failed:', error);
-      setBackendError(error.message);
-      
-      // If we have session key, still allow operation
-      if (sessionApiKey && sessionApiKey.trim()) {
-        setApiKeyConfigured(true);
-        setBackendError('');
-      } else {
-        setApiKeyConfigured(false);
-      }
-    } finally {
-      setConfigurationLoading(false);
-    }
-  }, [sessionApiKey]);
-  
+  // DEV mode keyboard shortcuts
   useEffect(() => {
-    console.log('🔄 useEffect [checkApiKeyConfiguration] triggered');
-    checkApiKeyConfiguration();
-  }, [checkApiKeyConfiguration]);
-  
+    if (!isDev) return;
+
+    const handleKeyDown = (event) => {
+      // Ctrl+Shift+D - Toggle debug panel
+      if (event.ctrlKey && event.shiftKey && event.key === 'D') {
+        event.preventDefault();
+        toggleDebugPanel?.();
+      }
+
+      // Ctrl+T - Toggle template panel
+      if (event.ctrlKey && event.key === 't') {
+        event.preventDefault();
+        debugContext?.toggleTemplatePanel?.();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDev, toggleDebugPanel, debugContext]);
+
+  // Note: checkApiKeyConfiguration now handled by SessionContext
+
   // Load conversations on mount (after API check) with comprehensive state restoration debugging
   useEffect(() => {
     console.log('🔄 useEffect [apiKeyConfigured] triggered');
@@ -271,10 +256,7 @@ function App() {
     }
   }, [apiKeyConfigured])
 
-  // Activity tracking for session management
-  const updateActivity = useCallback(() => {
-    setLastActivity(Date.now())
-  }, [])
+  // Note: updateActivity now provided by SessionContext
 
   // Force complete restoration mechanism
   const forceCompleteRestore = useCallback(() => {
@@ -296,20 +278,7 @@ function App() {
     
   }, [graphModel])
 
-  // Session timeout handler with state preservation
-  const handleSessionTimeout = useCallback(() => {
-    console.log('⏰ Session timeout detected, preserving state...');
-    
-    // Force save current state
-    graphModel.saveToStorage();
-    
-    // Mark that we need complete restoration on next login
-    localStorage.setItem('dagger-needs-full-restore', 'true');
-    
-    setSessionApiKey('');
-    setApiKeyConfigured(false);
-    
-  }, [graphModel])
+  // Note: handleSessionTimeout now handled by SessionContext
 
   // Session restore handler
   const handleSessionRestore = useCallback(() => {
@@ -359,35 +328,9 @@ function App() {
   }, [sessionApiKey, lastActivity])
   */
 
-  // Session timeout effect - FIXED VERSION
-  useEffect(() => {
-    console.log('🔄 useEffect [sessionApiKey-timeout] triggered');
-    
-    if (!sessionApiKey) {
-      console.log('✅ Session timeout effect completed (no session key)');
-      return;
-    }
+  // Note: Session timeout monitoring now handled by SessionContext
 
-    const checkTimeout = setInterval(() => {
-      const now = Date.now()
-      const timeSinceActivity = now - lastActivity  // Read current lastActivity value
-      const thirtyMinutes = 30 * 60 * 1000
-
-      if (timeSinceActivity > thirtyMinutes) {
-        console.log('🔥 Session expired - clearing API key')
-        setSessionApiKey('')
-        setApiKeyConfigured(false)
-      }
-    }, 60000) // Check every minute
-
-    console.log('✅ Session timeout effect completed (interval set)');
-    return () => {
-      console.log('🧹 Session timeout cleanup');
-      clearInterval(checkTimeout);
-    };
-  }, [sessionApiKey]) // REMOVED lastActivity from dependencies to break the loop
-
-  // Activity listeners for session management
+  // Activity listeners for session management (updates SessionContext)
   useEffect(() => {
     console.log('🔄 useEffect [activity-listeners] triggered');
     const events = ['click', 'keypress', 'scroll', 'mousemove']
@@ -416,51 +359,9 @@ function App() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [])
 
-  const handleApiKeySubmit = useCallback(async (key) => {
-    if (!ClaudeAPI.validateApiKey(key)) {
-      setApiTestStatus('❌ Invalid API key format')
-      return
-    }
-
-    setApiTestStatus('🧪 Testing API key...')
-    ClaudeAPI.setApiKey(key)
-    ClaudeAPI.setModel(selectedModel)
-    
-    try {
-      const result = await ClaudeAPI.testApiKey()
-      if (result.success) {
-        setApiKey(key)
-        setApiTestStatus('✅ API key working!')
-      } else {
-        setApiTestStatus(`❌ ${result.message}`)
-      }
-    } catch (error) {
-      setApiTestStatus(`❌ Test failed: ${error.message}`)
-    }
-  }, [selectedModel])
-
-  const toggleDarkMode = useCallback(() => {
-    const newMode = !darkMode
-    setDarkMode(newMode)
-    localStorage.setItem('dagger-dark-mode', JSON.stringify(newMode))
-    
-    // Apply dark mode to html element as well
-    if (newMode) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-  }, [darkMode])
-
-  // Apply dark mode on mount
-  useEffect(() => {
-    console.log('🔄 useEffect [darkMode] triggered');
-    if (darkMode) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-  }, [darkMode])
+  // Note: handleApiKeySubmit, checkApiKeyConfiguration, handleSessionTimeout now handled by SessionContext
+  // Note: handleModelChange and handleExtendedThinkingChange now handled by ConfigurationContext
+  // Note: toggleDarkMode and handleViewChange now handled by UIContext
 
   // Simplified auto-scroll: scroll to selected conversation when switching to linear view
   useEffect(() => {
@@ -508,34 +409,8 @@ function App() {
   );
   */
 
-  const handleModelChange = useCallback((model) => {
-    setSelectedModel(model)
-    localStorage.setItem('dagger-model', model)
-    
-    // Update API singleton if connected
-    if (apiKey) {
-      ClaudeAPI.setModel(model)
-      ClaudeAPI.setExtendedThinking(extendedThinking)
-    }
-
-    // Reset extended thinking if model doesn't support it
-    if (!ClaudeAPI.MODELS[model]?.supportsExtendedThinking) {
-      setExtendedThinking(false)
-    }
-  }, [apiKey, extendedThinking])
-
-  // Handle extended thinking toggle
-  const handleExtendedThinkingChange = useCallback((enabled) => {
-    setExtendedThinking(enabled)
-    if (apiKey) {
-      ClaudeAPI.setExtendedThinking(enabled)
-    }
-  }, [apiKey])
-
-  const handleViewChange = useCallback((view) => {
-    setCurrentView(view)
-    localStorage.setItem('dagger-view', view)
-  }, [])
+  // Note: handleModelChange and handleExtendedThinkingChange now handled by ConfigurationContext
+  // Note: handleViewChange and toggleDarkMode now handled by UIContext
 
   const handleNodeSelect = useCallback((nodeId, nodeData) => {
     console.log('🎯 Graph node selected:', nodeId);
@@ -880,8 +755,13 @@ function App() {
       console.log(`🔍 Selected conversation:`, conversation);
       console.log(`🔍 Display number:`, conversation.displayNumber);
       console.log(`🔍 Is branch:`, graphModel.isBranchId(conversation.displayNumber));
-      
+
       setCurrentConversationId(conversationId);
+
+      // Update debug panel selection (DEV mode only)
+      if (isDev && debugContext) {
+        debugContext.selectConversation(conversationId);
+      }
       
       // Determine context based on conversation type
       if (graphModel.isBranchId(conversation.displayNumber)) {
@@ -951,16 +831,16 @@ function App() {
       
       switch (branchType) {
         case 'virgin':
-          branchModel = 'claude-sonnet-4-20250514'; // Fresh conversations
-          console.log('🌱 Virgin branch - using Sonnet 4');
+          branchModel = 'claude-sonnet-4-5-20250929'; // Fresh conversations
+          console.log('🌱 Virgin branch - using Sonnet 4.5');
           break;
         case 'personality':
-          branchModel = 'claude-sonnet-4-20250514'; // Personality + efficiency
-          console.log('🎭 Personality branch - using Sonnet 4');
+          branchModel = 'claude-sonnet-4-5-20250929'; // Personality + efficiency
+          console.log('🎭 Personality branch - using Sonnet 4.5');
           break;
         case 'knowledge':
-          branchModel = 'claude-opus-4-20250514';   // Complex context processing
-          console.log('🧠 Knowledge branch - using Opus 4');
+          branchModel = 'claude-opus-4-5-20251101';   // Complex context processing
+          console.log('🧠 Knowledge branch - using Opus 4.5');
           break;
         default:
           branchModel = selectedModel;
@@ -1108,7 +988,7 @@ function App() {
           {
             status: 'complete',
             threadId: targetThreadId,
-            model: 'claude-sonnet-4-20250514',
+            model: 'claude-sonnet-4-5-20250929',
             isAutoGenerated: true,
             mergeSource: sourceConversationId,
             mergeTarget: targetConversationId,
@@ -1434,8 +1314,8 @@ This personality framework helps you understand my thinking patterns and communi
               </option>
             ))}
           </select>
-          
-          {ClaudeAPI.MODELS[selectedModel]?.supportsExtendedThinking && (
+
+          {modelSupportsExtendedThinking && (
             <label className="extended-thinking-toggle" style={{
               display: 'flex',
               alignItems: 'center',
@@ -1669,6 +1549,7 @@ This personality framework helps you understand my thinking patterns and communi
 
             <div className="input-section">
               <DaggerInput
+                ref={inputRef}
                 onSubmit={handleNewConversation}
                 displayNumber={getNextDisplayNumber()}
                 placeholder="Ask anything, explore ideas, branch into new territories..."
@@ -1754,7 +1635,7 @@ This personality framework helps you understand my thinking patterns and communi
 
       {/* Enhanced Thread Debugging Panel (development only) */}
       {import.meta.env.DEV && (
-        <ActiveThreads 
+        <ActiveThreads
           graphModel={graphModel}
           onSwitchThread={(threadId) => {
             console.log('🔄 Switching to thread:', threadId);
@@ -1762,6 +1643,15 @@ This personality framework helps you understand my thinking patterns and communi
           }}
         />
       )}
+
+      {/* Debug Panel (development only) */}
+      {import.meta.env.DEV && <DebugPanel />}
+
+      {/* Test Template Panel (development only) */}
+      {import.meta.env.DEV && <TestTemplatePanel inputRef={inputRef} />}
+
+      {/* Debug Toolbar (development only) */}
+      {import.meta.env.DEV && <DebugToolbar />}
 
       {/* Global Tokenizer Popup */}
       <TokenizerPopup
@@ -1774,6 +1664,27 @@ This personality framework helps you understand my thinking patterns and communi
       )}
     </div>
   )
+}
+
+// Wrap AppContent with context providers
+function App() {
+  const isDev = import.meta.env.DEV;
+
+  return (
+    <UIProvider>
+      <ConfigurationProvider>
+        <SessionProvider>
+          {isDev ? (
+            <DebugProvider>
+              <AppContent />
+            </DebugProvider>
+          ) : (
+            <AppContent />
+          )}
+        </SessionProvider>
+      </ConfigurationProvider>
+    </UIProvider>
+  );
 }
 
 export default App

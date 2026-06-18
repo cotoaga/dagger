@@ -50,7 +50,7 @@ const SessionApiKeyInput = ({ onApiKeySubmit, onTimeout }) => {
           'x-session-api-key': apiKey // Pass as header for this session
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-6',
           max_tokens: 10,
           messages: [
             {
