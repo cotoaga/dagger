@@ -4,10 +4,11 @@ import Logger from '../utils/logger.js';
 
 class ClaudeAPIClass {
   constructor() {
-    this.apiKey = null;  // Now fetched from Supabase
-    this.cachedApiKey = null;  // Cache for session
+    this.apiKey = null;
+    this.sessionApiKey = null;  // Volatile key entered by user on login screen
+    this.cachedApiKey = null;   // Cache for Supabase-fetched key
     this.baseURL = '/api/chat';
-    this.conversationThreads = new Map(); // Thread ID -> message history
+    this.conversationThreads = new Map();
     this.model = 'claude-sonnet-4-6';
     this.extendedThinking = false;
   }
@@ -45,9 +46,20 @@ class ClaudeAPIClass {
   }
 
   /**
-   * Get API key (async - fetches from Supabase if needed)
+   * Set a volatile session API key (entered directly by the user).
+   * Takes priority over the Supabase-stored key.
+   */
+  setSessionApiKey(key) {
+    this.sessionApiKey = key || null;
+  }
+
+  /**
+   * Get API key — session key takes priority, then Supabase.
    */
   async getApiKey() {
+    if (this.sessionApiKey) {
+      return this.sessionApiKey;
+    }
     return await this.fetchApiKeyFromSupabase();
   }
 
@@ -55,6 +67,7 @@ class ClaudeAPIClass {
    * Clear cached API key (call on sign out)
    */
   clearApiKeyCache() {
+    this.sessionApiKey = null;
     this.cachedApiKey = null;
     console.log('🗑️ API key cache cleared');
   }
