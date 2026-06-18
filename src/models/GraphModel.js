@@ -143,12 +143,19 @@ export class GraphModel {
    */
   getModelDisplayName(model) {
     switch (model) {
-      case 'claude-sonnet-4-20250514': return '🧠 Claude Sonnet 4';
-      case 'claude-opus-4-20250514': return '🚀 Claude Opus 4';
+      case 'claude-sonnet-4-5-20250929': return '🧠 Claude Sonnet 4.5';
+      case 'claude-haiku-4-5-20251001': return '⚡ Claude Haiku 4.5';
+      case 'claude-opus-4-5-20251101': return '🚀 Claude Opus 4.5';
+      // Legacy Claude 4 models (for backwards compatibility)
+      case 'claude-sonnet-4-20250514': return '🧠 Claude Sonnet 4 (Legacy)';
+      case 'claude-opus-4-20250514': return '🚀 Claude Opus 4 (Legacy)';
       case 'claude-3-5-sonnet-20241022': return '⚙️ Claude 3.5 Sonnet (Legacy)';
       case 'claude-3-5-haiku-20241022': return '🍃 Claude 3.5 Haiku (Legacy)';
       case 'claude-3-opus-20240229': return '🎵 Claude 3 Opus (Legacy)';
       default:
+        if (model?.includes('sonnet-4-5')) return '🧠 Claude Sonnet 4.5';
+        if (model?.includes('haiku-4-5')) return '⚡ Claude Haiku 4.5';
+        if (model?.includes('opus-4-5')) return '🚀 Claude Opus 4.5';
         if (model?.includes('sonnet-4')) return '🧠 Claude Sonnet 4';
         if (model?.includes('opus-4')) return '🚀 Claude Opus 4';
         if (model?.includes('sonnet')) return '🎭 Claude Sonnet';
@@ -858,7 +865,7 @@ export class GraphModel {
       // Conversation metadata
       processingTime: 0,
       tokenCount: 0,
-      model: options.model || 'claude-sonnet-4-20250514',
+      model: options.model || 'claude-sonnet-4-5-20250929',
       temperature: options.temperature || 0.7,
       status: 'processing'
     };
@@ -1111,15 +1118,15 @@ export class GraphModel {
    */
   addMergeEdge(sourceNodeId, targetNodeId) {
     console.log('🔗 Adding merge edge:', sourceNodeId, '→', targetNodeId);
-    
+
     const sourceConv = this.conversations.get(sourceNodeId);
     const targetConv = this.conversations.get(targetNodeId);
-    
+
     if (!sourceConv || !targetConv) {
       console.error('Cannot add merge edge: invalid node IDs');
       return false;
     }
-    
+
     const mergeInfo = {
       sourceId: sourceNodeId,
       sourceDisplayNumber: sourceConv.displayNumber,
@@ -1127,12 +1134,167 @@ export class GraphModel {
       targetDisplayNumber: targetConv.displayNumber,
       timestamp: Date.now()
     };
-    
+
     this.mergeHistory.set(sourceNodeId, mergeInfo);
-    
+
     console.log('✅ Merge edge added:', mergeInfo);
     this.saveToStorage();
     return true;
+  }
+
+  // ============================================================
+  // DEBUG METHODS (DEV mode only)
+  // ============================================================
+
+  /**
+   * Get comprehensive debug information for a conversation
+   * @param {string} conversationId - UUID of conversation
+   * @returns {Object} Debug metadata
+   */
+  getDebugInfo(conversationId) {
+    const conversation = this.conversations.get(conversationId);
+    if (!conversation) {
+      return null;
+    }
+
+    // Get parent conversation if exists
+    const parent = conversation.parentId
+      ? this.conversations.get(conversation.parentId)
+      : null;
+
+    // Get merge info if this conversation was merged
+    const mergeInfo = this.mergeHistory.get(conversationId);
+
+    // Calculate context size
+    const contextSize = this.getContextSize(conversationId);
+
+    // Get conversation chain
+    const chain = this.getConversationChain(conversationId);
+
+    return {
+      // Basic identifiers
+      id: conversation.id,
+      displayNumber: conversation.displayNumber,
+
+      // Branch information
+      branchType: conversation.branchType || 'main',
+      depth: conversation.depth || 0,
+      parentId: conversation.parentId || null,
+      parentDisplayNumber: parent?.displayNumber || null,
+
+      // Status
+      status: conversation.status,
+      timestamp: conversation.timestamp,
+      formattedTimestamp: formatISODateTime(conversation.timestamp),
+
+      // Context information
+      model: conversation.model,
+      modelDisplay: this.getModelDisplayName(conversation.model),
+      temperature: conversation.temperature,
+      tokenCount: conversation.tokenCount || 0,
+      processingTime: conversation.processingTime || 0,
+
+      // Context size
+      contextSize,
+
+      // Conversation chain
+      chain,
+
+      // Merge information
+      mergeInfo: mergeInfo || null,
+      isMerged: this.mergedBranches.has(this.getBranchPrefix(conversation.displayNumber)),
+
+      // Additional metadata
+      systemPrompt: conversation.systemPrompt ? '(present)' : '(none)',
+      promptTemplate: conversation.promptTemplate || null,
+
+      // Raw conversation (for inspection)
+      raw: conversation
+    };
+  }
+
+  /**
+   * Get conversation chain from root to current node
+   * @param {string} conversationId - UUID of conversation
+   * @returns {Array<Object>} Chain of conversations from root to current
+   */
+  getConversationChain(conversationId) {
+    const chain = [];
+    let currentId = conversationId;
+
+    // Build chain by walking up parent links
+    while (currentId) {
+      const conv = this.conversations.get(currentId);
+      if (!conv) break;
+
+      chain.unshift({
+        id: conv.id,
+        displayNumber: conv.displayNumber,
+        branchType: conv.branchType || 'main',
+        isCurrent: conv.id === conversationId
+      });
+
+      currentId = conv.parentId;
+    }
+
+    return chain;
+  }
+
+  /**
+   * Calculate context size (approximate character count) for a conversation
+   * @param {string} conversationId - UUID of conversation
+   * @returns {number} Approximate context size in characters
+   */
+  getContextSize(conversationId) {
+    const conversation = this.conversations.get(conversationId);
+    if (!conversation) {
+      return 0;
+    }
+
+    let size = 0;
+
+    // Add current conversation
+    size += conversation.prompt?.length || 0;
+    size += conversation.response?.length || 0;
+    size += conversation.systemPrompt?.length || 0;
+
+    // Add parent history if knowledge branch
+    if (conversation.branchType === 'knowledge' && conversation.parentId) {
+      const chain = this.getConversationChain(conversation.parentId);
+      for (const node of chain) {
+        const conv = this.conversations.get(node.id);
+        if (conv) {
+          size += conv.prompt?.length || 0;
+          size += conv.response?.length || 0;
+        }
+      }
+    }
+
+    return size;
+  }
+
+  /**
+   * Get all branch conversations for a given parent
+   * @param {string} parentId - Parent conversation UUID
+   * @returns {Array<Object>} Array of branch conversations
+   */
+  getBranchConversations(parentId) {
+    const branches = [];
+
+    for (const [id, conv] of this.conversations) {
+      if (conv.parentId === parentId) {
+        branches.push(conv);
+      }
+    }
+
+    // Sort by displayNumber
+    branches.sort((a, b) => {
+      const aNum = parseFloat(String(a.displayNumber).replace(/\./g, ''));
+      const bNum = parseFloat(String(b.displayNumber).replace(/\./g, ''));
+      return aNum - bNum;
+    });
+
+    return branches;
   }
 }
 

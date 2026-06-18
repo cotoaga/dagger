@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, forwardRef, useImperativeHandle, useRef } from 'react'
 import TextareaAutosize from 'react-textarea-autosize'
 
-export function DaggerInput({ onSubmit, displayNumber, placeholder = "Ask anything, explore ideas, branch into new territories..." }) {
+export const DaggerInput = forwardRef(function DaggerInput({ onSubmit, displayNumber, placeholder = "Ask anything, explore ideas, branch into new territories..." }, ref) {
+  const textareaRef = useRef(null);
   const [content, setContent] = useState('')
   const [temperature, setTemperature] = useState(0.7)
 
@@ -34,6 +35,22 @@ export function DaggerInput({ onSubmit, displayNumber, placeholder = "Ask anythi
     onSubmit(submission)
     setContent('')
   }, [content, temperature, displayNumber, onSubmit, getCharCount, getWordCount])
+
+  // Expose methods to parent component via ref
+  useImperativeHandle(ref, () => ({
+    setValue: (value) => {
+      setContent(value);
+    },
+    getValue: () => {
+      return content;
+    },
+    focus: () => {
+      textareaRef.current?.focus();
+    },
+    clear: () => {
+      setContent('');
+    }
+  }), [content]);
 
   return (
     <div className="dagger-input">
@@ -68,6 +85,7 @@ export function DaggerInput({ onSubmit, displayNumber, placeholder = "Ask anythi
       </div>
       
       <TextareaAutosize
+        ref={textareaRef}
         value={content}
         onChange={(e) => setContent(e.target.value)}
         onKeyDown={handleKeyDown}
@@ -95,7 +113,7 @@ export function DaggerInput({ onSubmit, displayNumber, placeholder = "Ask anythi
       </div>
     </div>
   )
-}
+});
 
 // Add some basic CSS-in-JS styles
 const styles = `

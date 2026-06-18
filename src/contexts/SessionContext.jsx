@@ -121,7 +121,8 @@ export function SessionProvider({ children }) {
   useEffect(() => {
     console.log('🔄 SessionContext: useEffect [checkApiKeyConfiguration] triggered');
     checkApiKeyConfiguration();
-  }, [checkApiKeyConfiguration]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionApiKey]); // Only run when sessionApiKey changes, not when callback changes
 
   // Sync session API key with Claude API
   useEffect(() => {
@@ -134,7 +135,7 @@ export function SessionProvider({ children }) {
   // Session timeout monitoring (30 minutes)
   useEffect(() => {
     if (!sessionApiKey) {
-      console.log('🔄 SessionContext: No session key, skipping timeout check');
+      // Skip logging when no session key to avoid console spam
       return;
     }
 
@@ -156,18 +157,17 @@ export function SessionProvider({ children }) {
     return () => clearInterval(intervalId);
   }, [sessionApiKey, lastActivity, handleSessionTimeout]);
 
-  // Debug logging
+  // Debug logging (only on important state changes, not lastActivity)
   useEffect(() => {
     console.log('🔑 SessionContext state:', {
       hasApiKey: !!apiKey,
       hasSessionApiKey: !!sessionApiKey,
       apiKeyConfigured,
       configurationLoading,
-      hasBackendError: !!backendError,
-      lastActivity: new Date(lastActivity).toISOString(),
-      timeSinceActivity: ((Date.now() - lastActivity) / 1000 / 60).toFixed(1) + ' min'
+      hasBackendError: !!backendError
     });
-  }, [apiKey, sessionApiKey, apiKeyConfigured, configurationLoading, backendError, lastActivity]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiKey, sessionApiKey, apiKeyConfigured, configurationLoading, backendError]); // Removed lastActivity to avoid spam
 
   const value = {
     // API key state

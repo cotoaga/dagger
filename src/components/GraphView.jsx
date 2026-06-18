@@ -743,7 +743,7 @@ export function GraphView({ conversations, currentConversationId, onConversation
       const fullPrompt = `${selectedPrompt.content}\n\nBranch conversation to analyze:\n\n${branchContext}`;
       
       Logger.debug('SENDING TO CLAUDE API', {
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5-20250929',
         temperature: 0.7,
         inputLength: fullPrompt.length
       });
@@ -754,7 +754,7 @@ export function GraphView({ conversations, currentConversationId, onConversation
       console.log('⏱️ Making API call...');
       
       const summaryResponse = await claudeAPI.sendMessage([], fullPrompt, { 
-        model: 'claude-sonnet-4-20250514', 
+        model: 'claude-sonnet-4-5-20250929', 
         temperature: 0.7 
       });
       

@@ -1,0 +1,296 @@
+/* DebugPanel.css - Floating debug inspector styling (DEV mode only) */
+
+.debug-panel {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  width: 400px;
+  max-height: calc(100vh - 120px);
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 2px solid #0f3460;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.debug-panel.collapsed {
+  height: 48px;
+  overflow: hidden;
+}
+
+/* Header */
+.debug-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, #0f3460 0%, #533483 100%);
+  border-bottom: 1px solid #16213e;
+  cursor: pointer;
+  user-select: none;
+}
+
+.debug-panel-header:hover {
+  background: linear-gradient(90deg, #16213e 0%, #533483 100%);
+}
+
+.debug-panel-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #00d4ff;
+  letter-spacing: 0.5px;
+}
+
+.debug-panel-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.copy-button,
+.close-button {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  padding: 4px 8px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.copy-button:hover,
+.close-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.close-button {
+  font-size: 18px;
+  font-weight: bold;
+  line-height: 1;
+  padding: 2px 8px;
+}
+
+/* Content */
+.debug-panel-content {
+  padding: 16px;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.debug-panel-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.debug-panel-content::-webkit-scrollbar-track {
+  background: #16213e;
+}
+
+.debug-panel-content::-webkit-scrollbar-thumb {
+  background: #0f3460;
+  border-radius: 4px;
+}
+
+.debug-panel-content::-webkit-scrollbar-thumb:hover {
+  background: #533483;
+}
+
+/* Empty State */
+.debug-empty {
+  text-align: center;
+  padding: 32px 16px;
+  color: #888;
+}
+
+.debug-empty p {
+  margin: 8px 0;
+}
+
+.debug-hint {
+  font-size: 11px;
+  font-style: italic;
+  color: #666;
+}
+
+/* Sections */
+.debug-section {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #16213e;
+}
+
+.debug-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.debug-section h4 {
+  margin: 0 0 12px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #00d4ff;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Fields */
+.debug-field {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.debug-field:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.debug-label {
+  color: #888;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.debug-value {
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.debug-id {
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  color: #00d4ff;
+  font-size: 11px;
+}
+
+.copy-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  font-size: 10px;
+  color: #888;
+  transition: color 0.2s ease;
+}
+
+.copy-icon:hover {
+  color: #00d4ff;
+}
+
+/* Status Colors */
+.status-active {
+  color: #4ade80;
+}
+
+.status-processing {
+  color: #fbbf24;
+}
+
+.status-complete {
+  color: #60a5fa;
+}
+
+.status-error {
+  color: #f87171;
+}
+
+/* Branch Type Colors */
+.branch-type-main {
+  color: #60a5fa;
+  font-weight: 600;
+}
+
+.branch-type-virgin {
+  color: #a78bfa;
+  font-weight: 600;
+}
+
+.branch-type-personality {
+  color: #f472b6;
+  font-weight: 600;
+}
+
+.branch-type-knowledge {
+  color: #4ade80;
+  font-weight: 600;
+}
+
+/* Merged Status */
+.merged {
+  color: #fbbf24;
+  font-weight: 600;
+}
+
+/* Conversation Chain */
+.debug-chain {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #0f3460;
+}
+
+.debug-chain code {
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  color: #00d4ff;
+  font-size: 12px;
+  flex-grow: 1;
+  white-space: nowrap;
+  overflow-x: auto;
+}
+
+.debug-chain::-webkit-scrollbar {
+  height: 4px;
+}
+
+.debug-chain::-webkit-scrollbar-track {
+  background: #16213e;
+}
+
+.debug-chain::-webkit-scrollbar-thumb {
+  background: #0f3460;
+  border-radius: 2px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .debug-panel {
+    width: calc(100vw - 40px);
+    right: 20px;
+    max-height: calc(100vh - 100px);
+  }
+}
+
+/* Animation */
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.debug-panel {
+  animation: slideIn 0.3s ease-out;
+}

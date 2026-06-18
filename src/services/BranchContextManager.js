@@ -38,18 +38,36 @@ export class BranchContextManager {
 
   /**
    * Build complete context chain for Claude API call
-   * 
+   *
    * @param {string|null} parentNodeId - Parent node to inherit from
    * @param {string|null} promptTemplateId - Prompt template to apply
    * @param {string} userInput - New user input for the branch
+   * @param {Object} options - Additional options
+   * @param {boolean} options.useRootPrompt - Whether to prepend root system prompt (default: true)
+   * @param {Object} options.branchMetadata - Branch metadata for template variables
    * @returns {Object} Complete message chain for Claude API
    */
-  buildContextChain(parentNodeId, promptTemplateId, userInput) {
+  buildContextChain(parentNodeId, promptTemplateId, userInput, options = {}) {
+    const { useRootPrompt = true, branchMetadata = {} } = options;
+
     const branchContext = this.createBranchContext(parentNodeId, promptTemplateId)
     const chainBuilder = new ConversationChainBuilder()
-    
+
+    // Prepare system prompts (root + personality)
+    let systemPrompt = branchContext.systemPrompt;
+
+    if (useRootPrompt) {
+      const rootPrompt = this.getRootSystemPrompt(parentNodeId, branchMetadata);
+      if (rootPrompt) {
+        // Prepend root prompt to personality prompt
+        systemPrompt = systemPrompt
+          ? `${rootPrompt}\n\n---\n\n${systemPrompt}`
+          : rootPrompt;
+      }
+    }
+
     return chainBuilder.buildChain(
-      branchContext.systemPrompt,
+      systemPrompt,
       branchContext.parentHistory,
       userInput
     )
@@ -103,7 +121,7 @@ export class BranchContextManager {
 
   /**
    * Get system prompt from prompt template
-   * 
+   *
    * @private
    * @param {string|null} promptTemplateId - Prompt template ID
    * @returns {string} System prompt content
@@ -115,6 +133,79 @@ export class BranchContextManager {
 
     const promptTemplate = this.promptsModel.getPrompt(promptTemplateId)
     return promptTemplate ? promptTemplate.content : ''
+  }
+
+  /**
+   * Get root system prompt with template variable replacement
+   *
+   * @private
+   * @param {string|null} parentNodeId - Parent node ID for context
+   * @param {Object} branchMetadata - Additional metadata about the current conversation
+   * @returns {string} Root system prompt with variables replaced
+   */
+  getRootSystemPrompt(parentNodeId, branchMetadata = {}) {
+    const rootPrompt = this.promptsModel.getRootSystemPrompt?.();
+    if (!rootPrompt) {
+      return '';
+    }
+
+    let promptText = rootPrompt.systemPrompt;
+
+    // Build branch context description for template variable
+    const branchContextDesc = this.buildBranchContextDescription(parentNodeId, branchMetadata);
+
+    // Replace template variables
+    promptText = promptText.replace('{{BRANCH_CONTEXT}}', branchContextDesc);
+
+    return promptText;
+  }
+
+  /**
+   * Build a human-readable description of the current branch context
+   *
+   * @private
+   * @param {string|null} parentNodeId - Parent node ID
+   * @param {Object} branchMetadata - Branch metadata
+   * @returns {string} Formatted branch context description
+   */
+  buildBranchContextDescription(parentNodeId, branchMetadata) {
+    const { displayNumber, branchType, depth = 0 } = branchMetadata;
+
+    let contextParts = [];
+
+    // Branch type information
+    if (branchType) {
+      contextParts.push(`- **Branch Type**: ${branchType}`);
+
+      if (branchType === 'virgin') {
+        contextParts.push(`- **Context Inheritance**: None (fresh start)`);
+      } else if (branchType === 'personality') {
+        contextParts.push(`- **Context Inheritance**: Custom prompt only (no history)`);
+      } else if (branchType === 'knowledge') {
+        contextParts.push(`- **Context Inheritance**: Full conversation history`);
+      }
+    } else {
+      contextParts.push(`- **Branch Type**: Main thread`);
+      contextParts.push(`- **Context Inheritance**: N/A (main conversation)`);
+    }
+
+    // Display number
+    if (displayNumber !== undefined) {
+      contextParts.push(`- **Display Number**: ${displayNumber}`);
+    }
+
+    // Depth information
+    contextParts.push(`- **Branch Depth**: ${depth}`);
+
+    // Parent information
+    if (parentNodeId) {
+      const parent = this.graphModel.getConversation(parentNodeId);
+      if (parent) {
+        contextParts.push(`- **Parent Node**: ${parent.displayNumber}`);
+      }
+    }
+
+    return contextParts.join('\n');
   }
 
   /**

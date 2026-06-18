@@ -8,7 +8,7 @@
 import React, { useState, useEffect } from 'react';
 import TokenizerService from '../services/TokenizerService.js';
 
-export const TokenizerPopup = ({ isOpen, onClose, content, model = 'claude-sonnet-4-20250514' }) => {
+export const TokenizerPopup = ({ isOpen, onClose, content, model = 'claude-sonnet-4-5-20250929' }) => {
   const [tokens, setTokens] = useState([]);
   const [stats, setStats] = useState(null);
   const [viewMode, setViewMode] = useState('visual'); // 'visual', 'table', 'stats'

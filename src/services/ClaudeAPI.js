@@ -4,66 +4,80 @@ import Logger from '../utils/logger.js';
 
 class ClaudeAPIClass {
   constructor() {
-    this.apiKey = localStorage.getItem('claude-api-key');
-    this.sessionApiKey = null;  // Will be set when session key is provided
+    this.apiKey = null;  // Now fetched from Supabase
+    this.cachedApiKey = null;  // Cache for session
     this.baseURL = '/api/chat';
     this.conversationThreads = new Map(); // Thread ID -> message history
-    this.model = 'claude-sonnet-4-20250514';
+    this.model = 'claude-sonnet-4-6';
     this.extendedThinking = false;
   }
 
   /**
-   * Set session API key for this instance
+   * Fetch API key from Supabase (cached for session)
    */
-  setSessionApiKey(sessionApiKey) {
-    this.sessionApiKey = sessionApiKey;
-    console.log('🔑 Session API key configured for ClaudeAPI instance');
+  async fetchApiKeyFromSupabase() {
+    // Return cached key if available
+    if (this.cachedApiKey) {
+      return this.cachedApiKey;
+    }
+
+    try {
+      const response = await fetch('/api/decrypt-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch API key from database');
+      }
+
+      const { apiKey } = await response.json();
+
+      // Cache for this session
+      this.cachedApiKey = apiKey;
+      console.log('🔑 API key fetched from Supabase');
+
+      return apiKey;
+    } catch (error) {
+      console.error('❌ Failed to fetch API key:', error);
+      throw new Error('No API key configured. Please configure in Settings.');
+    }
   }
 
   /**
-   * Get the best available API key (session preferred)
+   * Get API key (async - fetches from Supabase if needed)
    */
-  getApiKey() {
-    if (this.sessionApiKey && this.sessionApiKey.trim()) {
-      return this.sessionApiKey;
-    }
-    
-    if (this.apiKey && this.apiKey.trim()) {
-      return this.apiKey;
-    }
-    
-    throw new Error('No API key available - neither session nor backend configured');
+  async getApiKey() {
+    return await this.fetchApiKeyFromSupabase();
+  }
+
+  /**
+   * Clear cached API key (call on sign out)
+   */
+  clearApiKeyCache() {
+    this.cachedApiKey = null;
+    console.log('🗑️ API key cache cleared');
   }
 
   // DEPRECATED: Old helper methods replaced by MessageFormatter
   // All message formatting now uses MessageFormatter.js as single source of truth
 
-  // Available Claude models - Updated with Sonnet 4
+  // Available Claude models
   static MODELS = {
-    'claude-sonnet-4-20250514': {
-      name: 'Claude Sonnet 4',
-      description: 'Latest and most capable model',
+    'claude-sonnet-4-6': {
+      name: '🧠 Claude Sonnet 4.6',
+      description: 'Smart model for complex agents and coding',
       supportsExtendedThinking: true
     },
-    'claude-opus-4-20250514': {
-      name: 'Claude Opus 4',
-      description: 'Maximum capability for complex tasks',
+    'claude-haiku-4-5': {
+      name: '⚡ Claude Haiku 4.5',
+      description: 'Fastest model with near-frontier intelligence',
+      supportsExtendedThinking: false
+    },
+    'claude-opus-4-8': {
+      name: '🚀 Claude Opus 4.8',
+      description: 'Most capable model for demanding reasoning and agentic work',
       supportsExtendedThinking: true
-    },
-    'claude-3-5-sonnet-20241022': {
-      name: 'Claude 3.5 Sonnet',
-      description: 'Balanced performance (Legacy)',
-      supportsExtendedThinking: false
-    },
-    'claude-3-5-haiku-20241022': {
-      name: 'Claude 3.5 Haiku', 
-      description: 'Fast and efficient (Legacy)',
-      supportsExtendedThinking: false
-    },
-    'claude-3-opus-20240229': {
-      name: 'Claude 3 Opus',
-      description: 'Most capable v3 (Legacy)',
-      supportsExtendedThinking: false
     }
   }
 
@@ -79,12 +93,8 @@ class ClaudeAPIClass {
     }
   }
 
-  setApiKey(apiKey) {
-    this.apiKey = apiKey;
-    localStorage.setItem('claude-api-key', apiKey);
-  }
-
-  // Removed duplicate getApiKey() method - using session-aware version above
+  // DEPRECATED: API keys now managed through Supabase
+  // Use Settings screen to configure API key
 
 
   // Check proxy server health
@@ -124,9 +134,9 @@ class ClaudeAPIClass {
       const model = options.model || this.model;
       const temperature = options.temperature !== undefined ? options.temperature : 0.7;
       const startTime = Date.now();
-      
-      // Get API key using session-aware method
-      const apiKey = this.getApiKey();
+
+      // Get API key from Supabase (async)
+      const apiKey = await this.getApiKey();
       
       // Build messages using SINGLE formatter
       let messages;

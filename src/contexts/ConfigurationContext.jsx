@@ -13,7 +13,7 @@ const ConfigurationContext = createContext(null);
 export function ConfigurationProvider({ children }) {
   // Model selection state
   const [selectedModel, setSelectedModel] = useState(() => {
-    return localStorage.getItem('dagger-model') || 'claude-sonnet-4-20250514';
+    return localStorage.getItem('dagger-model') || 'claude-sonnet-4-5-20250929';
   });
 
   // Temperature state
@@ -24,6 +24,12 @@ export function ConfigurationProvider({ children }) {
 
   // Extended thinking state
   const [extendedThinking, setExtendedThinking] = useState(false);
+
+  // Root prompt state (for debug/testing)
+  const [useRootPrompt, setUseRootPrompt] = useState(() => {
+    const saved = localStorage.getItem('dagger-use-root-prompt');
+    return saved !== null ? saved === 'true' : true; // Default true
+  });
 
   // Model change handler
   const handleModelChange = useCallback((model) => {
@@ -58,6 +64,13 @@ export function ConfigurationProvider({ children }) {
     // Update Claude API if configured
     ClaudeAPI.setExtendedThinking(enabled);
   }, [extendedThinking]);
+
+  // Root prompt change handler
+  const handleUseRootPromptChange = useCallback((enabled) => {
+    console.log('🗡️ Root prompt:', useRootPrompt, '→', enabled);
+    setUseRootPrompt(enabled);
+    localStorage.setItem('dagger-use-root-prompt', enabled.toString());
+  }, [useRootPrompt]);
 
   // Sync Claude API configuration when model changes
   useEffect(() => {
@@ -96,6 +109,11 @@ export function ConfigurationProvider({ children }) {
     extendedThinking,
     setExtendedThinking,
     handleExtendedThinkingChange,
+
+    // Root prompt state
+    useRootPrompt,
+    setUseRootPrompt,
+    handleUseRootPromptChange,
 
     // Computed properties
     modelSupportsExtendedThinking: ClaudeAPI.MODELS[selectedModel]?.supportsExtendedThinking || false
